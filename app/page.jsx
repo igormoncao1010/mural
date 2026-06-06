@@ -21,6 +21,7 @@ export default function HomePage() {
   const [message, setMessage] = useState("");
   const [filter, setFilter] = useState("all");
   const [query, setQuery] = useState("");
+  const [activeCommentPostId, setActiveCommentPostId] = useState(null);
 
   const supabase = useMemo(() => {
     try {
@@ -100,7 +101,7 @@ export default function HomePage() {
   async function loadPosts() {
     const { data, error } = await supabase
       .from("posts")
-      .select("*, profiles!posts_user_id_fkey(name, avatar_url), comments(*, profiles!comments_user_id_fkey(name, avatar_url)), likes(user_id)")
+      .select("*, author:profiles!posts_user_id_fkey(name, avatar_url, neighborhood), comments(*, commenter:profiles!comments_user_id_fkey(name, avatar_url)), likes(user_id)")
       .order("created_at", { ascending: false });
 
     if (error) {
@@ -241,6 +242,24 @@ export default function HomePage() {
     await loadPosts();
   }
 
+  async function sharePost(post) {
+    const url = window.location.href;
+    const title = "Mural Digital";
+    const text = `${post.body}\n${post.street || ""} ${post.neighborhood || ""}`.trim();
+
+    try {
+      if (navigator.share) {
+        await navigator.share({ title, text, url });
+        return;
+      }
+
+      await navigator.clipboard.writeText(`${text}\n${url}`);
+      setMessage("Link do post copiado.");
+    } catch {
+      setMessage("Nao foi possivel compartilhar agora.");
+    }
+  }
+
   async function addComment(event, postId) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
@@ -259,6 +278,7 @@ export default function HomePage() {
     }
 
     event.currentTarget.reset();
+    setActiveCommentPostId(postId);
     await loadPosts();
   }
 
@@ -272,6 +292,17 @@ export default function HomePage() {
     const matchesSearch = !query || text.includes(query.toLowerCase());
     return matchesFilter && matchesSearch;
   });
+  const userPosts = posts.filter((post) => post.user_id === session?.user?.id).length;
+  const userComments = posts.reduce(
+    (total, post) => total + (post.comments || []).filter((comment) => comment.user_id === session?.user?.id).length,
+    0
+  );
+  const topicCounts = initialTopics
+    .filter((topic) => topic.id !== "all")
+    .map((topic) => ({
+      ...topic,
+      count: posts.filter((post) => post.topic === topic.id).length,
+    }));
 
   if (!supabaseReady) {
     return (
@@ -322,6 +353,12 @@ export default function HomePage() {
           </div>
         </div>
 
+        <nav className="side-nav" aria-label="Navegacao principal">
+          <button className="side-nav-item active" type="button">Mural</button>
+          <button className="side-nav-item" onClick={() => setFilter("all")} type="button">Debates</button>
+          <button className="side-nav-item" type="button">Perfil</button>
+        </nav>
+
         <div className="profile-chip">
           <Avatar profile={profile} />
           <div>
@@ -330,94 +367,165 @@ export default function HomePage() {
           </div>
         </div>
 
-        <button className="ghost-button" onClick={signOut} type="button">Sair</button>
+        <div className="sidebar-stats">
+          <span><strong>{posts.length}</strong> posts</span>
+          <span><strong>{userPosts}</strong> seus posts</span>
+          <span><strong>{userComments}</strong> comentarios</span>
+        </div>
+
+        <button className="ghost-button logout-button" onClick={signOut} type="button">Sair</button>
       </aside>
 
       <section className="content">
-        <header className="topbar">
-          <div>
-            <p className="eyebrow">Comunidade local</p>
-            <h1>Publique a rua, puxe o debate, organize a proposta.</h1>
-          </div>
-        </header>
+        <div className="social-layout">
+          <section className="feed-column">
+            <header className="feed-topbar">
+              <div>
+                <p className="eyebrow">Comunidade local</p>
+                <h1>Mural da cidade</h1>
+              </div>
+              <div className="feed-search">
+                <input onChange={(event) => setQuery(event.target.value)} placeholder="Buscar rua, bairro ou assunto" />
+                <select onChange={(event) => setFilter(event.target.value)} value={filter}>
+                  {initialTopics.map((topic) => (
+                    <option key={topic.id} value={topic.id}>{topic.name}</option>
+                  ))}
+                </select>
+              </div>
+            </header>
 
-        {message && <p className="notice">{message}</p>}
+            {message && <p className="notice">{message}</p>}
 
-        <section className="profile-editor">
-          <h2>Seu perfil</h2>
-          <form onSubmit={updateProfile}>
-            <input defaultValue={profile?.name || ""} name="name" placeholder="Nome publico" required />
-            <input defaultValue={profile?.neighborhood || ""} name="neighborhood" placeholder="Bairro / regiao" />
-            <input accept="image/*" name="avatar" type="file" />
-            <textarea defaultValue={profile?.bio || ""} name="bio" placeholder="Bio curta" />
-            <button className="primary-button" type="submit">Salvar perfil</button>
-          </form>
-        </section>
-
-        <section className="composer">
-          <h2>Nova foto da rua</h2>
-          <form onSubmit={createPost}>
-            <div className="form-grid">
-              <select name="topic" required>
-                {initialTopics.filter((topic) => topic.id !== "all").map((topic) => (
-                  <option key={topic.id} value={topic.id}>{topic.name}</option>
-                ))}
-              </select>
-              <input name="street" placeholder="Rua / avenida" />
-              <input name="neighborhood" placeholder="Bairro" />
-            </div>
-            <textarea maxLength={500} name="body" placeholder="O que esta acontecendo nesse local?" required />
-            <input accept="image/*" name="image" type="file" />
-            <button className="primary-button" type="submit">Publicar</button>
-          </form>
-        </section>
-
-        <section className="feed-tools">
-          <input onChange={(event) => setQuery(event.target.value)} placeholder="Buscar rua, bairro ou assunto" />
-          <select onChange={(event) => setFilter(event.target.value)} value={filter}>
-            {initialTopics.map((topic) => (
-              <option key={topic.id} value={topic.id}>{topic.name}</option>
-            ))}
-          </select>
-        </section>
-
-        <section className="feed">
-          {filteredPosts.map((post) => (
-            <article className="post-card" key={post.id}>
-              <div className="post-header">
-                <Avatar profile={post.profiles} />
+            <section className="composer">
+              <div className="composer-user">
+                <Avatar profile={profile} />
                 <div>
-                  <strong>{post.profiles?.name || "Morador"}</strong>
-                  <small>{post.street || "Rua nao informada"} {post.neighborhood ? `- ${post.neighborhood}` : ""}</small>
+                  <strong>{profile?.name || "Morador"}</strong>
+                  <small>Publique uma foto da rua e abra um debate</small>
                 </div>
-                <span>{topicLabel(post.topic)}</span>
               </div>
+              <form onSubmit={createPost}>
+                <textarea maxLength={500} name="body" placeholder="O que voce viu na rua hoje?" required />
+                <div className="form-grid">
+                  <select name="topic" required>
+                    {initialTopics.filter((topic) => topic.id !== "all").map((topic) => (
+                      <option key={topic.id} value={topic.id}>{topic.name}</option>
+                    ))}
+                  </select>
+                  <input name="street" placeholder="Rua / avenida" />
+                  <input name="neighborhood" placeholder="Bairro" />
+                </div>
+                <div className="composer-footer">
+                  <label className="upload-button">
+                    Foto
+                    <input accept="image/*" name="image" type="file" />
+                  </label>
+                  <button className="primary-button" type="submit">Publicar</button>
+                </div>
+              </form>
+            </section>
 
-              <p>{post.body}</p>
-              {post.image_url && <img alt="Foto publicada no mural" className="post-image" src={post.image_url} />}
+            <section className="feed">
+              {filteredPosts.length === 0 && (
+                <article className="empty-feed">
+                  <strong>Nenhum post encontrado.</strong>
+                  <span>Troque o filtro ou seja o primeiro a publicar sobre esse tema.</span>
+                </article>
+              )}
 
-              <div className="post-actions">
-                <button className="ghost-button" onClick={() => toggleLike(post)} type="button">
-                  {post.likes?.some((like) => like.user_id === session.user.id) ? "Curtido" : "Curtir"} ({post.likes?.length || 0})
-                </button>
+              {filteredPosts.map((post) => {
+                const liked = post.likes?.some((like) => like.user_id === session.user.id);
+                const commentsOpen = activeCommentPostId === post.id;
+
+                return (
+                  <article className="post-card" key={post.id}>
+                    <div className="post-header">
+                      <Avatar profile={post.author} />
+                      <div>
+                        <strong>{post.author?.name || "Morador"}</strong>
+                        <small>{post.street || "Rua nao informada"} {post.neighborhood ? `- ${post.neighborhood}` : ""}</small>
+                      </div>
+                      <span>{topicLabel(post.topic)}</span>
+                    </div>
+
+                    <p className="post-text">{post.body}</p>
+                    {post.image_url && <img alt="Foto publicada no mural" className="post-image" src={post.image_url} />}
+
+                    <div className="engagement-row">
+                      <span>{post.likes?.length || 0} curtidas</span>
+                      <span>{post.comments?.length || 0} comentarios</span>
+                    </div>
+
+                    <div className="post-actions">
+                      <button className={liked ? "action-button liked" : "action-button"} onClick={() => toggleLike(post)} type="button">
+                        <span aria-hidden="true">+</span>{liked ? "Curtido" : "Curtir"}
+                      </button>
+                      <button className="action-button" onClick={() => setActiveCommentPostId(commentsOpen ? null : post.id)} type="button">
+                        <span aria-hidden="true">#</span>Comentar
+                      </button>
+                      <button className="action-button" onClick={() => sharePost(post)} type="button">
+                        <span aria-hidden="true">@</span>Compartilhar
+                      </button>
+                    </div>
+
+                    {(commentsOpen || (post.comments || []).length > 0) && (
+                      <div className="comments">
+                        {(post.comments || []).map((comment) => (
+                          <div className="comment" key={comment.id}>
+                            <Avatar profile={comment.commenter} />
+                            <div>
+                              <strong>{comment.commenter?.name || "Morador"}</strong>
+                              <span>{comment.body}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {commentsOpen && (
+                      <form className="comment-form" onSubmit={(event) => addComment(event, post.id)}>
+                        <Avatar profile={profile} />
+                        <input name="comment" placeholder="Escreva um comentario" />
+                        <button type="submit">Enviar</button>
+                      </form>
+                    )}
+                  </article>
+                );
+              })}
+            </section>
+          </section>
+
+          <aside className="right-panel">
+            <section className="profile-editor">
+              <div className="panel-title">
+                <h2>Seu perfil</h2>
+                <Avatar profile={profile} />
               </div>
+              <form onSubmit={updateProfile}>
+                <input defaultValue={profile?.name || ""} name="name" placeholder="Nome publico" required />
+                <input defaultValue={profile?.neighborhood || ""} name="neighborhood" placeholder="Bairro / regiao" />
+                <textarea defaultValue={profile?.bio || ""} name="bio" placeholder="Bio curta" />
+                <label className="upload-line">
+                  Foto de perfil
+                  <input accept="image/*" name="avatar" type="file" />
+                </label>
+                <button className="primary-button" type="submit">Salvar perfil</button>
+              </form>
+            </section>
 
-              <div className="comments">
-                {(post.comments || []).map((comment) => (
-                  <div className="comment" key={comment.id}>
-                    <strong>{comment.profiles?.name || "Morador"}</strong>
-                    <span>{comment.body}</span>
-                  </div>
+            <section className="topic-panel">
+              <h2>Debates ativos</h2>
+              <div className="topic-list">
+                {topicCounts.map((topic) => (
+                  <button className={filter === topic.id ? "topic-item active" : "topic-item"} key={topic.id} onClick={() => setFilter(topic.id)} type="button">
+                    <span>{topic.name}</span>
+                    <strong>{topic.count}</strong>
+                  </button>
                 ))}
               </div>
-
-              <form className="comment-form" onSubmit={(event) => addComment(event, post.id)}>
-                <input name="comment" placeholder="Entrar no debate" />
-                <button type="submit">Enviar</button>
-              </form>
-            </article>
-          ))}
-        </section>
+            </section>
+          </aside>
+        </div>
       </section>
     </main>
   );
