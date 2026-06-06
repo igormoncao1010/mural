@@ -73,6 +73,35 @@ export default function HomePage() {
     if (isAdmin) loadAdminData();
   }, [isAdmin, posts.length]);
 
+  useEffect(() => {
+    if (!session?.user || !supabase) return;
+
+    let refreshTimer;
+    const refreshEverything = () => {
+      clearTimeout(refreshTimer);
+      refreshTimer = setTimeout(async () => {
+        await loadDebates();
+        await loadPosts();
+        if (isAdmin) await loadAdminData();
+      }, 250);
+    };
+
+    const channel = supabase
+      .channel("nodus-live-feed")
+      .on("postgres_changes", { event: "*", schema: "public", table: "posts" }, refreshEverything)
+      .on("postgres_changes", { event: "*", schema: "public", table: "comments" }, refreshEverything)
+      .on("postgres_changes", { event: "*", schema: "public", table: "likes" }, refreshEverything)
+      .on("postgres_changes", { event: "*", schema: "public", table: "reports" }, refreshEverything)
+      .on("postgres_changes", { event: "*", schema: "public", table: "debates" }, refreshEverything)
+      .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, refreshEverything)
+      .subscribe();
+
+    return () => {
+      clearTimeout(refreshTimer);
+      supabase.removeChannel(channel);
+    };
+  }, [session?.user?.id, supabase, isAdmin]);
+
   async function loadProfile() {
     const { data, error } = await supabase
       .from("profiles")
@@ -322,7 +351,7 @@ export default function HomePage() {
 
   async function sharePost(post) {
     const url = window.location.href;
-    const title = "Mural Digital";
+    const title = "Nodus";
     const text = `${post.body}\n${post.street || ""} ${post.neighborhood || ""}`.trim();
 
     try {
@@ -475,7 +504,7 @@ export default function HomePage() {
       <main className="setup-screen">
         <section className="setup-card">
           <p className="eyebrow">Configuracao pendente</p>
-          <h1>Adicione as chaves do Supabase para ativar o mural.</h1>
+          <h1>Adicione as chaves do Supabase para ativar o Nodus.</h1>
           <p>Copie `.env.example` para `.env.local` e preencha `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_ANON_KEY`.</p>
         </section>
       </main>
@@ -488,9 +517,9 @@ export default function HomePage() {
     return (
       <main className="auth-page">
         <section className="auth-hero">
-          <p className="eyebrow">Mural Digital</p>
-          <h1>Fotos das ruas virando debate publico.</h1>
-          <p>Moradores criam perfil, publicam imagens dos lugares por onde passam e ajudam a organizar prioridades por tema.</p>
+          <p className="eyebrow">Nodus</p>
+          <h1>Conecte ruas, ideias e pessoas.</h1>
+          <p>Uma rede local para publicar cenas da cidade, organizar debates e aproximar quem quer participar.</p>
         </section>
 
         <form className="auth-panel" onSubmit={handleAuth}>
@@ -512,10 +541,10 @@ export default function HomePage() {
     <main className="app-page">
       <aside className="sidebar">
         <div className="brand">
-          <span>MD</span>
+          <span>N</span>
           <div>
-            <strong>Mural Digital</strong>
-            <small>Pre-campanha participativa</small>
+            <strong>Nodus</strong>
+            <small>Rede local participativa</small>
           </div>
         </div>
 
@@ -579,7 +608,7 @@ export default function HomePage() {
               <header className="feed-topbar">
                 <div>
                   <p className="eyebrow">Comunidade local</p>
-                  <h1>Feed da cidade</h1>
+                  <h1>Nodus Feed</h1>
                 </div>
                 <div className="feed-search">
                   <input onChange={(event) => setQuery(event.target.value)} placeholder="Buscar rua, bairro ou assunto" />
@@ -647,7 +676,7 @@ export default function HomePage() {
                       </div>
 
                       <p className="post-text">{post.body}</p>
-                      {post.image_url && <img alt="Foto publicada no mural" className="post-image" src={post.image_url} />}
+                      {post.image_url && <img alt="Foto publicada no Nodus" className="post-image" src={post.image_url} />}
 
                       <div className="engagement-row">
                         <span>{post.likes?.length || 0} curtidas</span>
