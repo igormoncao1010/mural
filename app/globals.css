@@ -182,6 +182,13 @@ small {
   font-weight: 900;
 }
 
+.notice {
+  padding: 12px 14px;
+  border: 1px solid rgba(13, 128, 122, 0.18);
+  border-radius: 8px;
+  background: rgba(13, 128, 122, 0.08);
+}
+
 .app-page {
   display: grid;
   grid-template-columns: 300px minmax(0, 1fr);
@@ -290,6 +297,24 @@ small {
   border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.08);
+}
+
+.profile-chip > div {
+  min-width: 0;
+}
+
+.icon-button {
+  width: 40px;
+  height: 40px;
+  margin-left: auto;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 8px;
+  color: #07131d;
+  background: rgba(255, 255, 255, 0.86);
+  font-size: 1.05rem;
+  font-weight: 1000;
 }
 
 .avatar {
@@ -500,6 +525,7 @@ small {
 
 .post-header {
   gap: 12px;
+  align-items: flex-start;
 }
 
 .post-header > span {
@@ -510,6 +536,32 @@ small {
   background: rgba(13, 128, 122, 0.12);
   font-size: 0.82rem;
   font-weight: 1000;
+}
+
+.delete-button {
+  min-height: 34px;
+  border: 1px solid rgba(216, 90, 70, 0.26);
+  border-radius: 8px;
+  padding: 7px 10px;
+  color: var(--red);
+  background: rgba(216, 90, 70, 0.08);
+  font-size: 0.82rem;
+  font-weight: 1000;
+}
+
+.delete-button:hover {
+  background: rgba(216, 90, 70, 0.15);
+}
+
+.delete-button.compact {
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+.delete-button.neutral {
+  border-color: rgba(7, 19, 29, 0.18);
+  color: var(--muted);
+  background: rgba(7, 19, 29, 0.05);
 }
 
 .post-card h3 {
@@ -573,7 +625,13 @@ small {
 
 .action-button.active,
 .action-button.liked {
-  color: #075d59;
+  color: #a92517;
+}
+
+.heart-icon {
+  color: #d91919;
+  font-size: 1.18rem;
+  line-height: 1;
 }
 
 .comments {
@@ -590,6 +648,17 @@ small {
   background: var(--soft);
 }
 
+.comment > div {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.comment span {
+  color: #263642;
+  overflow-wrap: anywhere;
+}
+
 .comment .avatar {
   width: 34px;
   height: 34px;
@@ -598,6 +667,15 @@ small {
 .comment p {
   margin-top: 3px;
   color: #263642;
+}
+
+.empty-comments {
+  margin: 0;
+  padding: 10px;
+  border-radius: 8px;
+  color: var(--muted);
+  background: var(--soft);
+  font-weight: 800;
 }
 
 .comment-form {
@@ -681,6 +759,154 @@ small {
   background: rgba(13, 128, 122, 0.08);
 }
 
+.topic-item.read-only {
+  cursor: default;
+}
+
+.view-panel {
+  display: grid;
+  gap: 18px;
+}
+
+.view-header {
+  display: grid;
+  gap: 4px;
+  padding: 8px 0;
+}
+
+.view-header h1 {
+  margin: 0;
+  font-size: clamp(2.2rem, 5vw, 4.8rem);
+  line-height: 0.96;
+  letter-spacing: 0;
+}
+
+.admin-form {
+  display: grid;
+  grid-template-columns: minmax(180px, 0.7fr) minmax(220px, 1fr) auto;
+  gap: 10px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: 0 14px 42px rgba(7, 19, 29, 0.08);
+}
+
+.admin-tabs {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  padding: 6px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.78);
+}
+
+.admin-tabs button {
+  min-height: 44px;
+  border: 0;
+  border-radius: 8px;
+  color: var(--muted);
+  background: transparent;
+  font-weight: 900;
+}
+
+.admin-tabs button.active,
+.admin-tabs button:hover {
+  color: var(--ink);
+  background: #fff;
+  box-shadow: 0 8px 22px rgba(7, 19, 29, 0.08);
+}
+
+.debate-grid,
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.debate-card,
+.metric-card,
+.admin-table {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 14px 42px rgba(7, 19, 29, 0.08);
+}
+
+.debate-card {
+  min-height: 220px;
+  display: grid;
+  align-content: space-between;
+  gap: 18px;
+  padding: 18px;
+}
+
+.debate-card h2,
+.debate-card p {
+  margin: 0;
+}
+
+.debate-card p {
+  margin-top: 8px;
+  color: var(--muted);
+}
+
+.debate-card strong {
+  color: var(--teal);
+}
+
+.metric-card {
+  padding: 18px;
+}
+
+.metric-card span {
+  color: var(--muted);
+  font-weight: 900;
+}
+
+.metric-card strong {
+  display: block;
+  margin-top: 8px;
+  font-size: 2.25rem;
+}
+
+.admin-table {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+}
+
+.lead-box {
+  min-height: 120px;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.table-scroll {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  min-width: 760px;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  border-bottom: 1px solid var(--line);
+  padding: 12px 10px;
+  text-align: left;
+  vertical-align: top;
+}
+
+th {
+  color: var(--muted);
+  font-size: 0.82rem;
+  text-transform: uppercase;
+}
+
 @media (max-width: 1180px) {
   .app-page {
     grid-template-columns: 250px minmax(0, 1fr);
@@ -689,6 +915,11 @@ small {
   .social-grid,
   .social-layout {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .debate-grid,
+  .metrics-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .right-rail,
@@ -701,6 +932,8 @@ small {
 @media (max-width: 900px) {
   .auth-page,
   .app-page,
+  .admin-form,
+  .admin-tabs,
   .feed-tools,
   .feed-search,
   .composer-meta,
@@ -726,6 +959,11 @@ small {
   .feed-topbar {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .debate-grid,
+  .metrics-grid {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -769,5 +1007,13 @@ small {
 
   .comment-form {
     grid-template-columns: 1fr;
+  }
+
+  .post-header {
+    flex-wrap: wrap;
+  }
+
+  .delete-button {
+    width: 100%;
   }
 }
