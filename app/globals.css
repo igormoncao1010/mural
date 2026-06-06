@@ -482,6 +482,29 @@ small {
   min-width: 0;
 }
 
+.profile-link {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  border: 0;
+  padding: 0;
+  color: inherit;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.profile-link:hover strong,
+.comment-name-button:hover strong {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.profile-link > div {
+  min-width: 0;
+}
+
 .post-header > span {
   margin-left: auto;
   padding: 6px 9px;
@@ -640,14 +663,50 @@ small {
   height: 32px;
 }
 
-.comment > div {
-  min-width: 0;
-  display: grid;
-  gap: 2px;
+.comment-avatar-button,
+.comment-name-button {
+  border: 0;
+  padding: 0;
+  color: inherit;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
 }
 
-.comment span {
+.comment-avatar-button {
+  flex: 0 0 auto;
+}
+
+.comment-name-button {
+  display: grid;
+  justify-items: start;
+}
+
+.comment-content {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 7px;
+}
+
+.comment-topline {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.comment-tools {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.comment-body {
+  margin: 0;
   color: #2b2b2b;
+  line-height: 1.45;
   overflow-wrap: anywhere;
 }
 
@@ -666,6 +725,141 @@ small {
   align-items: center;
   gap: 8px;
   padding: 0 14px 14px;
+}
+
+.public-profile-view {
+  display: grid;
+  gap: 16px;
+  max-width: 980px;
+}
+
+.profile-back-button {
+  width: fit-content;
+}
+
+.public-profile-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 20px;
+  padding: 22px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.public-profile-card .avatar {
+  width: 96px;
+  height: 96px;
+  font-size: 1.65rem;
+}
+
+.public-profile-info {
+  min-width: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.public-profile-info h1 {
+  margin: 0;
+  font-size: clamp(2rem, 4vw, 4.2rem);
+  line-height: 0.95;
+  letter-spacing: 0;
+}
+
+.public-profile-info p {
+  max-width: 680px;
+  margin: 0;
+  color: #2b2b2b;
+  line-height: 1.5;
+}
+
+.public-profile-info small,
+.section-heading span,
+.profile-post-tile small {
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.public-profile-stat {
+  min-width: 120px;
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  border-left: 1px solid var(--line);
+  padding-left: 18px;
+}
+
+.public-profile-stat strong {
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.public-profile-stat span {
+  color: var(--muted);
+  font-weight: 900;
+}
+
+.public-profile-posts {
+  display: grid;
+  gap: 12px;
+}
+
+.section-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.section-heading h2 {
+  margin: 0;
+  font-size: 1.3rem;
+}
+
+.profile-post-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.profile-post-tile {
+  overflow: hidden;
+  display: grid;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.profile-post-tile img,
+.profile-post-placeholder {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  display: grid;
+  place-items: center;
+  object-fit: cover;
+  background: var(--surface-muted);
+}
+
+.profile-post-placeholder {
+  color: var(--muted);
+  font-weight: 1000;
+}
+
+.profile-post-tile > div {
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+}
+
+.profile-post-tile strong {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+}
+
+.profile-post-tile p {
+  margin: 0;
+  line-height: 1.45;
 }
 
 .right-panel {
@@ -983,6 +1177,19 @@ th {
     min-width: 0;
     grid-template-columns: 1fr;
   }
+
+  .public-profile-card {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .public-profile-stat {
+    grid-column: 1 / -1;
+    justify-items: start;
+    border-left: 0;
+    border-top: 1px solid var(--line);
+    padding-top: 14px;
+    padding-left: 0;
+  }
 }
 
 @media (max-width: 560px) {
@@ -1012,11 +1219,42 @@ th {
     padding: 0 7px;
   }
 
+  .public-profile-card {
+    align-items: start;
+    gap: 14px;
+    padding: 16px;
+  }
+
+  .public-profile-card .avatar {
+    width: 72px;
+    height: 72px;
+    font-size: 1.2rem;
+  }
+
+  .profile-post-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .section-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
   .comment-form {
     grid-template-columns: 1fr;
   }
 
+  .comment-topline {
+    gap: 8px;
+  }
+
+  .comment-tools {
+    gap: 4px;
+  }
+
   .delete-button.compact {
-    width: 100%;
+    width: auto;
+    padding-left: 8px;
+    padding-right: 8px;
   }
 }

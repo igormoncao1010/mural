@@ -29,6 +29,7 @@ export default function HomePage() {
   const [adminTab, setAdminTab] = useState("overview");
   const [showProfileSettings, setShowProfileSettings] = useState(false);
   const [activeCommentPostId, setActiveCommentPostId] = useState(null);
+  const [viewedProfile, setViewedProfile] = useState(null);
 
   const supabase = useMemo(() => {
     try {
@@ -160,7 +161,7 @@ export default function HomePage() {
   async function loadPosts() {
     const { data, error } = await supabase
       .from("posts")
-      .select("*, author:profiles!posts_user_id_fkey(name, avatar_url, neighborhood, role, badge_title), comments(*, commenter:profiles!comments_user_id_fkey(name, avatar_url, role, badge_title)), likes(user_id)")
+      .select("*, author:profiles!posts_user_id_fkey(id, name, avatar_url, neighborhood, bio, role, badge_title), comments(*, commenter:profiles!comments_user_id_fkey(id, name, avatar_url, neighborhood, bio, role, badge_title)), likes(user_id)")
       .order("created_at", { ascending: false });
 
     if (error) {
@@ -169,6 +170,26 @@ export default function HomePage() {
     }
 
     setPosts(data || []);
+  }
+
+  function openPublicProfile(person, fallbackId) {
+    if (!person && !fallbackId) return;
+
+    setViewedProfile({
+      id: person?.id || fallbackId,
+      name: person?.name || "Morador",
+      avatar_url: person?.avatar_url || "",
+      neighborhood: person?.neighborhood || "",
+      bio: person?.bio || "",
+      role: person?.role || "member",
+      badge_title: person?.badge_title || "",
+    });
+    setActiveView("public-profile");
+    setShowProfileSettings(false);
+
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
   }
 
   async function loadAdminData() {
@@ -630,7 +651,14 @@ export default function HomePage() {
           </section>
         )}
 
-        {activeView === "debates" ? (
+        {activeView === "public-profile" && viewedProfile ? (
+          <PublicProfileView
+            debates={activeDebates}
+            onBack={() => setActiveView("feed")}
+            posts={posts.filter((post) => post.user_id === viewedProfile.id)}
+            profile={viewedProfile}
+          />
+        ) : activeView === "debates" ? (
           <DebatesView
             debates={activeDebates}
             isAdmin={isAdmin}
@@ -719,12 +747,14 @@ export default function HomePage() {
                   return (
                     <article className="post-card" key={post.id}>
                       <div className="post-header">
-                        <Avatar profile={post.author} />
-                        <div>
+                        <button className="profile-link" onClick={() => openPublicProfile(post.author, post.user_id)} type="button">
+                          <Avatar profile={post.author} />
+                          <div>
                           <strong>{post.author?.name || "Morador"}</strong>
                           <small>{post.street || "Rua não informada"} {post.neighborhood ? `- ${post.neighborhood}` : ""}</small>
-                          <Badge profile={post.author} />
-                        </div>
+                            <Badge profile={post.author} />
+                          </div>
+                        </button>
                         <span>{topicLabel(post.topic, activeDebates)}</span>
                         {canDeletePost(post) && (
                           <button className="delete-button" onClick={() => deletePost(post)} type="button">Excluir</button>
@@ -756,16 +786,24 @@ export default function HomePage() {
                             {(post.comments || []).length === 0 && <p className="empty-comments">Ainda não há comentários.</p>}
                             {(post.comments || []).map((comment) => (
                               <div className="comment" key={comment.id}>
-                                <Avatar profile={comment.commenter} />
-                                <div>
-                                  <strong>{comment.commenter?.name || "Morador"}</strong>
-                                  <Badge profile={comment.commenter} />
-                                  <span>{comment.body}</span>
+                                <button className="comment-avatar-button" onClick={() => openPublicProfile(comment.commenter, comment.user_id)} type="button">
+                                  <Avatar profile={comment.commenter} />
+                                </button>
+                                <div className="comment-content">
+                                  <div className="comment-topline">
+                                    <button className="comment-name-button" onClick={() => openPublicProfile(comment.commenter, comment.user_id)} type="button">
+                                      <strong>{comment.commenter?.name || "Morador"}</strong>
+                                      <Badge profile={comment.commenter} />
+                                    </button>
+                                    <div className="comment-tools">
+                                      {canDeleteComment(comment) && (
+                                        <button className="delete-button compact" onClick={() => deleteComment(comment)} type="button">Excluir</button>
+                                      )}
+                                      <button className="delete-button compact neutral" onClick={() => reportContent({ commentId: comment.id })} type="button">Relatar</button>
+                                    </div>
+                                  </div>
+                                  <p className="comment-body">{comment.body}</p>
                                 </div>
-                                {canDeleteComment(comment) && (
-                                  <button className="delete-button compact" onClick={() => deleteComment(comment)} type="button">Excluir</button>
-                                )}
-                                <button className="delete-button compact neutral" onClick={() => reportContent({ commentId: comment.id })} type="button">Relatar</button>
                               </div>
                             ))}
                           </div>
@@ -820,6 +858,61 @@ export default function HomePage() {
         )}
       </section>
     </main>
+  );
+}
+
+function PublicProfileView({ debates, onBack, posts, profile }) {
+  return (
+    <section className="public-profile-view">
+      <button className="ghost-button profile-back-button" onClick={onBack} type="button">Voltar ao feed</button>
+
+      <section className="public-profile-card">
+        <Avatar profile={profile} />
+        <div className="public-profile-info">
+          <div>
+            <h1>{profile?.name || "Morador"}</h1>
+            <Badge profile={profile} />
+          </div>
+          <p>{profile?.bio || "Este perfil ainda não adicionou uma bio."}</p>
+          <small>{profile?.neighborhood || "Bairro não informado"}</small>
+        </div>
+        <div className="public-profile-stat">
+          <strong>{posts.length}</strong>
+          <span>{posts.length === 1 ? "publicação" : "publicações"}</span>
+        </div>
+      </section>
+
+      <section className="public-profile-posts">
+        <div className="section-heading">
+          <h2>Conteúdo postado</h2>
+          <span>{posts.length} no feed</span>
+        </div>
+
+        {posts.length === 0 ? (
+          <article className="empty-feed">
+            <strong>Nenhuma publicação ainda.</strong>
+            <span>Quando esta pessoa postar, o conteúdo aparecerá aqui.</span>
+          </article>
+        ) : (
+          <div className="profile-post-grid">
+            {posts.map((post) => (
+              <article className="profile-post-tile" key={post.id}>
+                {post.image_url ? (
+                  <img alt="Foto publicada no Nodus" src={post.image_url} />
+                ) : (
+                  <div className="profile-post-placeholder">Nodus</div>
+                )}
+                <div>
+                  <strong>{topicLabel(post.topic, debates)}</strong>
+                  <p>{post.body}</p>
+                  <small>{post.street || "Rua não informada"} {post.neighborhood ? `- ${post.neighborhood}` : ""}</small>
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
+    </section>
   );
 }
 
