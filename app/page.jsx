@@ -127,25 +127,18 @@ export default function HomePage() {
         options: { data: { name } },
       });
       if (error) {
-        setMessage(error.message);
+        setMessage(getFriendlyAuthMessage(error.message));
         return;
       }
 
-      if (data.user) {
-        await supabase.from("profiles").upsert({
-          id: data.user.id,
-          name,
-          email,
-          bio: "",
-          neighborhood: "",
-          avatar_url: "",
-        });
-      }
-
-      setMessage("Conta criada. Se o Supabase pedir confirmacao, verifique o email.");
+      setMessage(
+        data.session
+          ? "Conta criada. Voce ja pode usar o mural."
+          : "Conta criada. Verifique seu email para confirmar o cadastro."
+      );
     } else {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) setMessage(error.message);
+      if (error) setMessage(getFriendlyAuthMessage(error.message));
     }
   }
 
@@ -432,4 +425,26 @@ function Avatar({ profile }) {
 
 function topicLabel(topicId) {
   return initialTopics.find((topic) => topic.id === topicId)?.name || "Debate";
+}
+
+function getFriendlyAuthMessage(message) {
+  const lowerMessage = message.toLowerCase();
+
+  if (lowerMessage.includes("invalid login credentials")) {
+    return "Email ou senha incorretos.";
+  }
+
+  if (lowerMessage.includes("email not confirmed")) {
+    return "Confirme seu email antes de entrar.";
+  }
+
+  if (lowerMessage.includes("user already registered")) {
+    return "Este email ja tem cadastro. Tente entrar pelo login.";
+  }
+
+  if (lowerMessage.includes("password")) {
+    return "A senha precisa ter pelo menos 6 caracteres.";
+  }
+
+  return message;
 }
