@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Mural Digital</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true">MD</div>
+          <div>
+            <strong>Mural Digital</strong>
+            <span>Pre-campanha participativa</span>
+          </div>
+        </div>
+
+        <nav class="nav-list" aria-label="Navegacao principal">
+          <button class="nav-item active" data-view="feed" type="button"><span aria-hidden="true">#</span>Mural</button>
+          <button class="nav-item" data-view="topics" type="button"><span aria-hidden="true">?</span>Debates</button>
+          <button class="nav-item" data-view="profile" type="button"><span aria-hidden="true">@</span>Perfil</button>
+        </nav>
+
+        <section class="rules-panel">
+          <h2>Regras do debate</h2>
+          <p>Ideias fortes, respeito tambem. Evite ataques pessoais, boatos e dados sem fonte.</p>
+        </section>
+      </aside>
+
+      <main class="main-content">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">Comunidade local</p>
+            <h1>Ideias, fotos e conversas em um so mural</h1>
+          </div>
+          <div class="account-box" id="accountBox"></div>
+        </header>
+
+        <section class="auth-screen" id="authScreen">
+          <div class="auth-copy">
+            <p class="eyebrow">Entrar no mural</p>
+            <h2>Crie sua conta para publicar e participar dos debates.</h2>
+            <p>Esta versao e um prototipo local. Os dados ficam salvos apenas neste navegador.</p>
+            <div class="signal-strip" aria-label="Indicadores do mural">
+              <span><strong>3</strong> temas ativos</span>
+              <span><strong>24h</strong> conversa aberta</span>
+              <span><strong>1</strong> comunidade</span>
+            </div>
+          </div>
+
+          <form class="auth-card" id="authForm">
+            <div class="segmented-control" role="tablist" aria-label="Modo de acesso">
+              <button class="segment active" data-auth-mode="login" type="button">Login</button>
+              <button class="segment" data-auth-mode="register" type="button">Cadastro</button>
+            </div>
+
+            <label>
+              Nome
+              <input id="nameInput" autocomplete="name" placeholder="Seu nome" />
+            </label>
+            <label>
+              Email
+              <input id="emailInput" autocomplete="email" placeholder="voce@email.com" required type="email" />
+            </label>
+            <label>
+              Senha
+              <input id="passwordInput" autocomplete="current-password" minlength="4" placeholder="Minimo 4 caracteres" required type="password" />
+            </label>
+            <button class="primary-button" type="submit">Entrar</button>
+            <p class="form-note" id="authNote">Use maria@demo.com / 1234 para testar agora.</p>
+          </form>
+        </section>
+
+        <div class="workspace hidden" id="workspace">
+          <section class="composer" aria-label="Criar publicacao">
+            <div class="composer-header">
+              <div>
+                <p class="eyebrow">Nova publicacao</p>
+                <h2>Compartilhe uma foto e abra conversa</h2>
+              </div>
+              <select id="topicSelect" aria-label="Tema do debate"></select>
+            </div>
+
+            <form id="postForm">
+              <textarea id="postText" maxlength="280" placeholder="Qual ideia, problema ou proposta voce quer discutir?" required></textarea>
+              <div class="composer-status">
+                <span id="charCount">0/280</span>
+                <button class="ghost-button hidden" id="clearPhotoButton" type="button">Remover foto</button>
+              </div>
+              <img class="photo-preview hidden" id="photoPreview" alt="Pre-visualizacao da foto selecionada" />
+              <div class="composer-actions">
+                <label class="file-button">
+                  <input id="photoInput" accept="image/*" type="file" />
+                  Foto
+                </label>
+                <span id="photoName">Nenhuma foto selecionada</span>
+                <button class="primary-button" type="submit">Publicar</button>
+              </div>
+            </form>
+          </section>
+
+          <section class="content-grid">
+            <section class="feed-column" id="feedView">
+              <div class="section-title">
+                <h2>Mural da comunidade</h2>
+                <div class="feed-tools">
+                  <input id="searchInput" placeholder="Buscar no mural" type="search" />
+                  <select id="filterSelect" aria-label="Filtrar por tema">
+                    <option value="all">Todos os temas</option>
+                  </select>
+                </div>
+              </div>
+              <div class="post-list" id="postList"></div>
+            </section>
+
+            <section class="topics-column" id="topicsView">
+              <div class="section-title">
+                <h2>Temas em debate</h2>
+              </div>
+              <form class="topic-form" id="topicForm">
+                <input id="newTopicInput" maxlength="40" placeholder="Novo tema" required />
+                <button class="icon-button" title="Adicionar tema" type="submit">+</button>
+              </form>
+              <div class="topic-list" id="topicList"></div>
+            </section>
+
+            <section class="profile-column" id="profileView">
+              <div class="section-title">
+                <h2>Seu perfil</h2>
+              </div>
+              <div class="profile-panel" id="profilePanel"></div>
+            </section>
+          </section>
+        </div>
+      </main>
+    </div>
+
+    <template id="postTemplate">
+      <article class="post-card">
+        <div class="post-meta">
+          <div class="avatar"></div>
+          <div>
+            <strong class="post-author"></strong>
+            <span class="post-time"></span>
+          </div>
+          <span class="topic-pill"></span>
+        </div>
+        <p class="post-body"></p>
+        <img class="post-photo" alt="" />
+        <div class="post-owner-actions hidden">
+          <button class="ghost-button edit-post-button" type="button">Editar</button>
+          <button class="danger-button delete-post-button" type="button">Excluir</button>
+        </div>
+        <div class="post-actions">
+          <button class="like-button" type="button"></button>
+          <button class="comment-toggle" type="button">Comentar</button>
+        </div>
+        <div class="comments"></div>
+        <form class="comment-form">
+          <input maxlength="160" placeholder="Entre no debate com respeito" required />
+          <button type="submit">Enviar</button>
+        </form>
+      </article>
+    </template>
+
+    <script src="app.js"></script>
+  </body>
+</html>
