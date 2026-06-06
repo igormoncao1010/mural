@@ -284,6 +284,10 @@ small {
   font-weight: 900;
 }
 
+.mobile-settings-button {
+  display: none;
+}
+
 .avatar {
   width: 42px;
   height: 42px;
@@ -678,6 +682,10 @@ small {
   padding: 14px;
 }
 
+.mobile-profile-editor {
+  display: none;
+}
+
 .panel-title {
   justify-content: space-between;
   gap: 10px;
@@ -927,10 +935,33 @@ th {
   .side-nav {
     grid-auto-flow: column;
     overflow-x: auto;
+    flex: 1;
   }
 
   .profile-chip,
   .logout-button {
+    display: none;
+  }
+
+  .mobile-settings-button {
+    width: 42px;
+    height: 42px;
+    flex: 0 0 auto;
+    display: grid;
+    place-items: center;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    color: var(--ink);
+    background: var(--surface);
+    font-weight: 900;
+  }
+
+  .mobile-profile-editor {
+    display: grid;
+    margin-bottom: 14px;
+  }
+
+  .right-panel {
     display: none;
   }
 

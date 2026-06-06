@@ -587,6 +587,8 @@ export default function HomePage() {
           )}
         </nav>
 
+        <button className="mobile-settings-button" onClick={() => setShowProfileSettings((open) => !open)} title="Configurações do perfil" type="button">{"\u2699"}</button>
+
         <div className="profile-chip">
           <Avatar profile={profile} />
           <div>
@@ -607,6 +609,26 @@ export default function HomePage() {
 
       <section className="content">
         {message && <p className="notice">{message}</p>}
+
+        {showProfileSettings && (
+          <section className="profile-editor mobile-profile-editor">
+            <div className="panel-title">
+              <h2>Configurações</h2>
+              <Avatar profile={profile} />
+            </div>
+            <form onSubmit={updateProfile}>
+              <input defaultValue={profile?.name || ""} name="name" placeholder="Nome público" required />
+              <input defaultValue={profile?.neighborhood || ""} name="neighborhood" placeholder="Bairro / região" />
+              <input defaultValue={profile?.contact || ""} name="contact" placeholder="Contato público" />
+              <textarea defaultValue={profile?.bio || ""} name="bio" placeholder="Bio curta" />
+              <label className="upload-line">
+                Foto de perfil
+                <input accept="image/*" name="avatar" type="file" />
+              </label>
+              <button className="primary-button" type="submit">Salvar perfil</button>
+            </form>
+          </section>
+        )}
 
         {activeView === "debates" ? (
           <DebatesView
