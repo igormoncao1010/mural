@@ -423,6 +423,134 @@ small {
   border-top: 1px solid var(--line-soft);
 }
 
+.composer-preview {
+  overflow: hidden;
+  display: grid;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-muted);
+}
+
+.preview-heading,
+.preview-author {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.preview-heading {
+  justify-content: space-between;
+  padding: 10px 12px 0;
+}
+
+.preview-heading span {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 1000;
+  text-transform: uppercase;
+}
+
+.preview-heading button {
+  min-height: 32px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0 10px;
+  color: var(--muted);
+  background: var(--surface);
+  font-weight: 900;
+}
+
+.preview-author {
+  padding: 0 12px;
+}
+
+.preview-author .avatar {
+  width: 36px;
+  height: 36px;
+}
+
+.preview-author > div {
+  min-width: 0;
+}
+
+.preview-author strong,
+.preview-author small {
+  display: block;
+}
+
+.preview-author small {
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.preview-author > span {
+  margin-left: auto;
+  border-radius: 8px;
+  padding: 5px 8px;
+  color: var(--muted);
+  background: var(--surface);
+  font-size: 0.76rem;
+  font-weight: 900;
+}
+
+.composer-preview p {
+  margin: 0;
+  padding: 0 12px 2px;
+  line-height: 1.45;
+}
+
+.composer-preview img {
+  width: 100%;
+  max-height: 440px;
+  display: block;
+  object-fit: cover;
+  background: var(--surface);
+}
+
+.post-progress {
+  display: grid;
+  gap: 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: var(--surface-muted);
+}
+
+.post-progress > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 0.86rem;
+  font-weight: 900;
+}
+
+.post-progress progress {
+  width: 100%;
+  height: 10px;
+  overflow: hidden;
+  border: 0;
+  border-radius: 999px;
+  background: var(--line);
+}
+
+.post-progress progress::-webkit-progress-bar {
+  border-radius: 999px;
+  background: var(--line);
+}
+
+.post-progress progress::-webkit-progress-value {
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+}
+
+.post-progress progress::-moz-progress-bar {
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+}
+
 .upload-button,
 .upload-line {
   min-height: 44px;
@@ -441,6 +569,13 @@ small {
   width: auto;
   min-width: 148px;
   justify-content: center;
+}
+
+.upload-button:has(input:disabled),
+.primary-button:disabled,
+.preview-heading button:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
 }
 
 .upload-button input,

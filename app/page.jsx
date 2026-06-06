@@ -30,6 +30,12 @@ export default function HomePage() {
   const [showProfileSettings, setShowProfileSettings] = useState(false);
   const [activeCommentPostId, setActiveCommentPostId] = useState(null);
   const [viewedProfile, setViewedProfile] = useState(null);
+  const [postDraft, setPostDraft] = useState({ body: "", topic: "", street: "", neighborhood: "" });
+  const [postImageFile, setPostImageFile] = useState(null);
+  const [postPreviewUrl, setPostPreviewUrl] = useState("");
+  const [posting, setPosting] = useState(false);
+  const [postProgress, setPostProgress] = useState(0);
+  const [postStatus, setPostStatus] = useState("");
 
   const supabase = useMemo(() => {
     try {
@@ -73,6 +79,25 @@ export default function HomePage() {
   useEffect(() => {
     if (isAdmin) loadAdminData();
   }, [isAdmin, posts.length]);
+
+  useEffect(() => {
+    if (!postDraft.topic && activeDebates[0]?.slug) {
+      setPostDraft((draft) => ({ ...draft, topic: activeDebates[0].slug }));
+    }
+  }, [debates, postDraft.topic]);
+
+  useEffect(() => {
+    if (!postPreviewUrl) return undefined;
+    return () => URL.revokeObjectURL(postPreviewUrl);
+  }, [postPreviewUrl]);
+
+  useEffect(() => {
+    if (!posting) return undefined;
+    const timer = setInterval(() => {
+      setPostProgress((progress) => (progress >= 88 ? progress : Math.min(progress + 3, 88)));
+    }, 450);
+    return () => clearInterval(timer);
+  }, [posting]);
 
   useEffect(() => {
     if (!session?.user || !supabase) return;
@@ -296,41 +321,97 @@ export default function HomePage() {
     setMessage("Perfil atualizado.");
   }
 
+  function updatePostDraft(field, value) {
+    setPostDraft((draft) => ({ ...draft, [field]: value }));
+  }
+
+  function handlePostImageChange(event) {
+    const file = event.target.files?.[0];
+    if (!file) {
+      setPostImageFile(null);
+      setPostPreviewUrl("");
+      return;
+    }
+
+    setPostImageFile(file);
+    setPostPreviewUrl(URL.createObjectURL(file));
+  }
+
+  function clearPostComposer() {
+    setPostDraft({
+      body: "",
+      topic: postDraft.topic || activeDebates[0]?.slug || "",
+      street: "",
+      neighborhood: "",
+    });
+    setPostImageFile(null);
+    setPostPreviewUrl("");
+  }
+
   async function createPost(event) {
     event.preventDefault();
     setMessage("");
+    if (posting) return;
 
-    const form = new FormData(event.currentTarget);
-    const image = form.get("image");
+    const body = postDraft.body.trim();
+    if (!body) {
+      setMessage("Escreva algo antes de publicar.");
+      return;
+    }
+
+    const topic = postDraft.topic || activeDebates[0]?.slug || "geral";
     let imageUrl = "";
 
-    if (image?.size) {
-      const path = `${session.user.id}/${Date.now()}-${image.name}`;
-      const { error: uploadError } = await supabase.storage.from("post-images").upload(path, image);
+    setPosting(true);
+    setPostStatus("Preparando publicação...");
+    setPostProgress(14);
+
+    if (postImageFile?.size) {
+      setPostStatus("Enviando foto...");
+      setPostProgress(38);
+      const path = `${session.user.id}/${Date.now()}-${postImageFile.name}`;
+      const { error: uploadError } = await supabase.storage.from("post-images").upload(path, postImageFile);
       if (uploadError) {
         setMessage(uploadError.message);
+        setPosting(false);
+        setPostStatus("");
+        setPostProgress(0);
         return;
       }
       imageUrl = supabase.storage.from("post-images").getPublicUrl(path).data.publicUrl;
     }
 
+    setPostStatus("Salvando no feed...");
+    setPostProgress(72);
+
     const { error } = await supabase.from("posts").insert({
       user_id: session.user.id,
-      topic: form.get("topic"),
-      street: String(form.get("street") || "").trim(),
-      neighborhood: String(form.get("neighborhood") || "").trim(),
-      body: String(form.get("body") || "").trim(),
+      topic,
+      street: postDraft.street.trim(),
+      neighborhood: postDraft.neighborhood.trim(),
+      body,
       image_url: imageUrl,
     });
 
     if (error) {
       setMessage(error.message);
+      setPosting(false);
+      setPostStatus("");
+      setPostProgress(0);
       return;
     }
 
-    event.currentTarget.reset();
-    setMessage("Publicado.");
+    setPostStatus("Atualizando feed...");
+    setPostProgress(92);
     await loadPosts();
+    setPostProgress(100);
+    setPostStatus("Publicado.");
+    clearPostComposer();
+    setTimeout(() => {
+      setPosting(false);
+      setPostStatus("");
+      setPostProgress(0);
+    }, 650);
   }
 
   async function createDebate(event) {
@@ -711,24 +792,60 @@ export default function HomePage() {
                   </div>
                 </div>
                 <form onSubmit={createPost}>
-                  <textarea className="composer-textarea" maxLength={500} name="body" placeholder="Compartilhe uma cena, uma ideia ou um problema da cidade." required />
+                  <textarea
+                    className="composer-textarea"
+                    disabled={posting}
+                    maxLength={500}
+                    name="body"
+                    onChange={(event) => updatePostDraft("body", event.target.value)}
+                    placeholder="Compartilhe uma cena, uma ideia ou um problema da cidade."
+                    required
+                    value={postDraft.body}
+                  />
                   <div className="form-grid">
-                    <select name="topic" required>
+                    <select disabled={posting} name="topic" onChange={(event) => updatePostDraft("topic", event.target.value)} required value={postDraft.topic}>
                       {activeDebates.map((topic) => (
                         <option key={topic.slug} value={topic.slug}>{topic.title}</option>
                       ))}
                     </select>
-                    <input name="street" placeholder="Rua / avenida" />
-                    <input name="neighborhood" placeholder="Bairro" />
+                    <input disabled={posting} name="street" onChange={(event) => updatePostDraft("street", event.target.value)} placeholder="Rua / avenida" value={postDraft.street} />
+                    <input disabled={posting} name="neighborhood" onChange={(event) => updatePostDraft("neighborhood", event.target.value)} placeholder="Bairro" value={postDraft.neighborhood} />
                   </div>
+                  {(postDraft.body || postDraft.street || postDraft.neighborhood || postPreviewUrl) && (
+                    <article className="composer-preview">
+                      <div className="preview-heading">
+                        <span>Preview</span>
+                        <button disabled={posting} onClick={clearPostComposer} type="button">Limpar</button>
+                      </div>
+                      <div className="preview-author">
+                        <Avatar profile={profile} />
+                        <div>
+                          <strong>{profile?.name || "Morador"}</strong>
+                          <small>{postDraft.street || "Rua não informada"} {postDraft.neighborhood ? `- ${postDraft.neighborhood}` : ""}</small>
+                        </div>
+                        <span>{topicLabel(postDraft.topic, activeDebates)}</span>
+                      </div>
+                      {postDraft.body && <p>{postDraft.body}</p>}
+                      {postPreviewUrl && <img alt="Preview da foto escolhida" src={postPreviewUrl} />}
+                    </article>
+                  )}
                   <div className="composer-footer">
                     <label className="upload-button">
                       <PaperclipIcon />
-                      <span>Anexar foto</span>
-                      <input accept="image/*" name="image" type="file" />
+                      <span>{postImageFile ? "Trocar foto" : "Anexar foto"}</span>
+                      <input accept="image/*" disabled={posting} key={postPreviewUrl || "empty-post-image"} name="image" onChange={handlePostImageChange} type="file" />
                     </label>
-                    <button className="primary-button" type="submit">Publicar</button>
+                    <button className="primary-button" disabled={posting} type="submit">{posting ? "Postando..." : "Publicar"}</button>
                   </div>
+                  {posting && (
+                    <div className="post-progress" aria-live="polite">
+                      <div>
+                        <span>{postStatus}</span>
+                        <strong>{postProgress}%</strong>
+                      </div>
+                      <progress max="100" value={postProgress}>{postProgress}%</progress>
+                    </div>
+                  )}
                 </form>
               </section>
 
