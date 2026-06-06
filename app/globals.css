@@ -288,6 +288,105 @@ small {
   display: none;
 }
 
+.alerts-block {
+  position: relative;
+  display: grid;
+  gap: 8px;
+}
+
+.alerts-button {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0 12px;
+  color: var(--ink);
+  background: var(--surface);
+  font-weight: 900;
+}
+
+.alerts-button.active,
+.alerts-button:hover {
+  background: var(--surface-muted);
+}
+
+.alerts-button strong {
+  min-width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  color: #fff;
+  background: var(--danger);
+  font-size: 0.78rem;
+}
+
+.alerts-panel {
+  display: grid;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px;
+  background: var(--surface);
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.08);
+}
+
+.alerts-title,
+.alert-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.alerts-title {
+  justify-content: space-between;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.alerts-list {
+  display: grid;
+  gap: 8px;
+  max-height: 360px;
+  overflow-y: auto;
+}
+
+.alert-item {
+  align-items: flex-start;
+  border: 1px solid var(--line-soft);
+  border-radius: 8px;
+  padding: 9px;
+  background: var(--surface-muted);
+}
+
+.alert-item.unread {
+  border-color: rgba(229, 57, 53, 0.28);
+  background: #fff8f8;
+}
+
+.alert-item .avatar {
+  width: 32px;
+  height: 32px;
+}
+
+.alert-item p,
+.empty-alerts {
+  margin: 0;
+}
+
+.alert-item p {
+  line-height: 1.35;
+}
+
+.alert-item small,
+.empty-alerts {
+  color: var(--muted);
+  font-weight: 800;
+}
+
 .avatar {
   width: 42px;
   height: 42px;
@@ -874,7 +973,7 @@ small {
 
 .public-profile-card {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
   align-items: center;
   gap: 20px;
   padding: 22px;
@@ -1270,6 +1369,41 @@ th {
   .profile-chip,
   .logout-button {
     display: none;
+  }
+
+  .alerts-block {
+    position: relative;
+    flex: 0 0 auto;
+  }
+
+  .alerts-button {
+    width: 42px;
+    height: 42px;
+    min-height: 42px;
+    justify-content: center;
+    padding: 0;
+  }
+
+  .alerts-button span {
+    font-size: 0;
+  }
+
+  .alerts-button span::before {
+    content: "!";
+    font-size: 1rem;
+  }
+
+  .alerts-button strong {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+  }
+
+  .alerts-panel {
+    position: absolute;
+    top: calc(100% + 10px);
+    right: 0;
+    width: min(88vw, 340px);
   }
 
   .mobile-settings-button {

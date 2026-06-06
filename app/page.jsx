@@ -20,6 +20,8 @@ export default function HomePage() {
   const [debates, setDebates] = useState(defaultDebates);
   const [adminProfiles, setAdminProfiles] = useState([]);
   const [adminReports, setAdminReports] = useState([]);
+  const [notifications, setNotifications] = useState([]);
+  const [showAlerts, setShowAlerts] = useState(false);
   const [authMode, setAuthMode] = useState("login");
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
@@ -36,6 +38,7 @@ export default function HomePage() {
   const [posting, setPosting] = useState(false);
   const [postProgress, setPostProgress] = useState(0);
   const [postStatus, setPostStatus] = useState("");
+  const [commentDrafts, setCommentDrafts] = useState({});
 
   const supabase = useMemo(() => {
     try {
@@ -68,12 +71,14 @@ export default function HomePage() {
     if (!session?.user || !supabase) {
       setProfile(null);
       setPosts([]);
+      setNotifications([]);
       return;
     }
 
     loadProfile();
     loadDebates();
     loadPosts();
+    loadNotifications();
   }, [session, supabase]);
 
   useEffect(() => {
@@ -117,6 +122,9 @@ export default function HomePage() {
       .on("postgres_changes", { event: "*", schema: "public", table: "posts" }, refreshEverything)
       .on("postgres_changes", { event: "*", schema: "public", table: "comments" }, refreshEverything)
       .on("postgres_changes", { event: "*", schema: "public", table: "likes" }, refreshEverything)
+      .on("postgres_changes", { event: "*", schema: "public", table: "notifications", filter: `recipient_id=eq.${session.user.id}` }, async () => {
+        await loadNotifications();
+      })
       .on("postgres_changes", { event: "*", schema: "public", table: "reports" }, refreshEverything)
       .on("postgres_changes", { event: "*", schema: "public", table: "debates" }, refreshEverything)
       .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, refreshEverything)
@@ -195,6 +203,37 @@ export default function HomePage() {
     }
 
     setPosts(data || []);
+  }
+
+  async function loadNotifications() {
+    const { data, error } = await supabase
+      .from("notifications")
+      .select("*, actor:profiles!notifications_actor_id_fkey(name, avatar_url, role, badge_title), post:posts!notifications_post_id_fkey(body, street, neighborhood)")
+      .order("created_at", { ascending: false })
+      .limit(30);
+
+    if (!error) setNotifications(data || []);
+  }
+
+  async function createNotification({ recipientId, type, postId, commentId }) {
+    if (!recipientId || recipientId === session.user.id) return;
+
+    await supabase.from("notifications").insert({
+      recipient_id: recipientId,
+      actor_id: session.user.id,
+      type,
+      post_id: postId || null,
+      comment_id: commentId || null,
+    });
+  }
+
+  async function markNotificationsAsRead() {
+    const unreadIds = notifications.filter((item) => !item.read_at).map((item) => item.id);
+    if (!unreadIds.length) return;
+
+    const readAt = new Date().toISOString();
+    setNotifications((items) => items.map((item) => (unreadIds.includes(item.id) ? { ...item, read_at: readAt } : item)));
+    await supabase.from("notifications").update({ read_at: readAt }).in("id", unreadIds);
   }
 
   function openPublicProfile(person, fallbackId) {
@@ -449,7 +488,12 @@ export default function HomePage() {
       await supabase.from("likes").delete().eq("post_id", post.id).eq("user_id", session.user.id);
       setMessage("Curtida removida.");
     } else {
-      await supabase.from("likes").insert({ post_id: post.id, user_id: session.user.id });
+      const { error } = await supabase.from("likes").insert({ post_id: post.id, user_id: session.user.id });
+      if (error) {
+        setMessage(error.message);
+        return;
+      }
+      await createNotification({ recipientId: post.user_id, type: "like", postId: post.id });
       setMessage("Curtido.");
     }
 
@@ -478,22 +522,27 @@ export default function HomePage() {
 
   async function addComment(event, postId) {
     event.preventDefault();
-    const form = new FormData(event.currentTarget);
-    const body = String(form.get("comment") || "").trim();
+    const body = String(commentDrafts[postId] || "").trim();
     if (!body) return;
 
-    const { error } = await supabase.from("comments").insert({
-      post_id: postId,
-      user_id: session.user.id,
-      body,
-    });
+    const post = posts.find((item) => item.id === postId);
+    const { data, error } = await supabase
+      .from("comments")
+      .insert({
+        post_id: postId,
+        user_id: session.user.id,
+        body,
+      })
+      .select("id")
+      .single();
 
     if (error) {
       setMessage(error.message);
       return;
     }
 
-    event.currentTarget.reset();
+    setCommentDrafts((drafts) => ({ ...drafts, [postId]: "" }));
+    await createNotification({ recipientId: post?.user_id, type: "comment", postId, commentId: data?.id });
     setActiveCommentPostId(postId);
     setMessage("Comentário enviado.");
     await loadPosts();
@@ -615,6 +664,7 @@ export default function HomePage() {
   );
   const totalLikes = posts.reduce((total, post) => total + (post.likes?.length || 0), 0);
   const totalComments = posts.reduce((total, post) => total + (post.comments?.length || 0), 0);
+  const unreadNotifications = notifications.filter((item) => !item.read_at).length;
   const topicCounts = activeDebates.map((topic) => ({
     ...topic,
     count: posts.filter((post) => post.topic === topic.slug).length,
@@ -698,6 +748,21 @@ export default function HomePage() {
             <small>{profile?.neighborhood || "Perfil sem bairro"}</small>
           </div>
           <button className="icon-button" onClick={() => setShowProfileSettings((open) => !open)} title="Configurações do perfil" type="button">{"\u2699"}</button>
+        </div>
+
+        <div className="alerts-block">
+          <button
+            className={showAlerts ? "alerts-button active" : "alerts-button"}
+            onClick={() => {
+              setShowAlerts((open) => !open);
+              if (!showAlerts) markNotificationsAsRead();
+            }}
+            type="button"
+          >
+            <span>Alertas</span>
+            {unreadNotifications > 0 && <strong>{unreadNotifications}</strong>}
+          </button>
+          {showAlerts && <NotificationsPanel notifications={notifications} />}
         </div>
 
         <div className="sidebar-stats">
@@ -927,7 +992,12 @@ export default function HomePage() {
 
                           <form className="comment-form" onSubmit={(event) => addComment(event, post.id)}>
                             <Avatar profile={profile} />
-                            <input name="comment" placeholder="Escreva um comentário" />
+                            <input
+                              name="comment"
+                              onChange={(event) => setCommentDrafts((drafts) => ({ ...drafts, [post.id]: event.target.value }))}
+                              placeholder="Escreva um comentário"
+                              value={commentDrafts[post.id] || ""}
+                            />
                             <button type="submit">Enviar</button>
                           </form>
                         </>
@@ -978,7 +1048,36 @@ export default function HomePage() {
   );
 }
 
+function NotificationsPanel({ notifications }) {
+  return (
+    <section className="alerts-panel">
+      <div className="alerts-title">
+        <strong>Notificações</strong>
+        <span>{notifications.length}</span>
+      </div>
+      {notifications.length === 0 ? (
+        <p className="empty-alerts">Nenhuma notificação ainda.</p>
+      ) : (
+        <div className="alerts-list">
+          {notifications.map((item) => (
+            <article className={item.read_at ? "alert-item" : "alert-item unread"} key={item.id}>
+              <Avatar profile={item.actor} />
+              <div>
+                <strong>{item.actor?.name || "Alguém"}</strong>
+                <p>{item.type === "like" ? "curtiu sua publicação." : "comentou na sua publicação."}</p>
+                <small>{item.post?.street || item.post?.body || "Publicação do feed"}</small>
+              </div>
+            </article>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
 function PublicProfileView({ debates, onBack, posts, profile }) {
+  const profileLikes = posts.reduce((total, post) => total + (post.likes?.length || 0), 0);
+
   return (
     <section className="public-profile-view">
       <button className="ghost-button profile-back-button" onClick={onBack} type="button">Voltar ao feed</button>
@@ -996,6 +1095,10 @@ function PublicProfileView({ debates, onBack, posts, profile }) {
         <div className="public-profile-stat">
           <strong>{posts.length}</strong>
           <span>{posts.length === 1 ? "publicação" : "publicações"}</span>
+        </div>
+        <div className="public-profile-stat">
+          <strong>{profileLikes}</strong>
+          <span>{profileLikes === 1 ? "curtida" : "curtidas"}</span>
         </div>
       </section>
 

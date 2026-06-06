@@ -48,6 +48,17 @@ create table if not exists public.likes (
   primary key (post_id, user_id)
 );
 
+create table if not exists public.notifications (
+  id uuid primary key default gen_random_uuid(),
+  recipient_id uuid not null references public.profiles(id) on delete cascade,
+  actor_id uuid references public.profiles(id) on delete set null,
+  type text not null check (type in ('like', 'comment')),
+  post_id uuid references public.posts(id) on delete cascade,
+  comment_id uuid references public.comments(id) on delete cascade,
+  read_at timestamptz,
+  created_at timestamptz default now()
+);
+
 create table if not exists public.reports (
   id uuid primary key default gen_random_uuid(),
   post_id uuid references public.posts(id) on delete cascade,
@@ -128,6 +139,7 @@ alter table public.profiles enable row level security;
 alter table public.posts enable row level security;
 alter table public.comments enable row level security;
 alter table public.likes enable row level security;
+alter table public.notifications enable row level security;
 alter table public.reports enable row level security;
 alter table public.debates enable row level security;
 
@@ -224,6 +236,25 @@ on public.likes for delete
 to authenticated
 using (auth.uid() = user_id);
 
+drop policy if exists "users can view their notifications" on public.notifications;
+create policy "users can view their notifications"
+on public.notifications for select
+to authenticated
+using (auth.uid() = recipient_id);
+
+drop policy if exists "users can create notifications" on public.notifications;
+create policy "users can create notifications"
+on public.notifications for insert
+to authenticated
+with check (auth.uid() = actor_id and auth.uid() <> recipient_id);
+
+drop policy if exists "users can mark their notifications as read" on public.notifications;
+create policy "users can mark their notifications as read"
+on public.notifications for update
+to authenticated
+using (auth.uid() = recipient_id)
+with check (auth.uid() = recipient_id);
+
 drop policy if exists "users can create reports" on public.reports;
 create policy "users can create reports"
 on public.reports for insert
@@ -317,6 +348,10 @@ begin
 
   if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'likes') then
     alter publication supabase_realtime add table public.likes;
+  end if;
+
+  if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'notifications') then
+    alter publication supabase_realtime add table public.notifications;
   end if;
 
   if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'reports') then
