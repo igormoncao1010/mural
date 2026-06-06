@@ -100,7 +100,7 @@ export default function HomePage() {
   async function loadPosts() {
     const { data, error } = await supabase
       .from("posts")
-      .select("*, profiles(name, avatar_url), comments(*, profiles(name, avatar_url)), likes(user_id)")
+      .select("*, profiles!posts_user_id_fkey(name, avatar_url), comments(*, profiles!comments_user_id_fkey(name, avatar_url)), likes(user_id)")
       .order("created_at", { ascending: false });
 
     if (error) {
@@ -129,6 +129,22 @@ export default function HomePage() {
       if (error) {
         setMessage(getFriendlyAuthMessage(error.message));
         return;
+      }
+
+      if (data.session && data.user) {
+        const { error: profileError } = await supabase.from("profiles").upsert({
+          id: data.user.id,
+          name,
+          email,
+          bio: "",
+          neighborhood: "",
+          avatar_url: "",
+        });
+
+        if (profileError) {
+          setMessage("Conta criada. Entre novamente para completar o perfil.");
+          return;
+        }
       }
 
       setMessage(
