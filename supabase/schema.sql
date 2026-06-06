@@ -9,12 +9,14 @@ create table if not exists public.profiles (
   bio text default '',
   avatar_url text default '',
   role text default 'member',
+  badge_title text default '',
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );
 
 alter table public.profiles add column if not exists contact text default '';
 alter table public.profiles add column if not exists role text default 'member';
+alter table public.profiles add column if not exists badge_title text default '';
 
 create table if not exists public.posts (
   id uuid primary key default gen_random_uuid(),
@@ -24,9 +26,12 @@ create table if not exists public.posts (
   neighborhood text default '',
   body text not null,
   image_url text default '',
+  share_count integer default 0,
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );
+
+alter table public.posts add column if not exists share_count integer default 0;
 
 create table if not exists public.comments (
   id uuid primary key default gen_random_uuid(),
@@ -101,6 +106,17 @@ begin
 
   return new;
 end;
+$$;
+
+create or replace function public.increment_post_share(post_id_input uuid)
+returns void
+language sql
+security definer
+set search_path = public
+as $$
+  update public.posts
+  set share_count = coalesce(share_count, 0) + 1
+  where id = post_id_input;
 $$;
 
 drop trigger if exists protect_profile_role on public.profiles;
@@ -247,12 +263,15 @@ using (public.is_admin());
 
 insert into public.debates (slug, title, description, status)
 values
-  ('infraestrutura', 'Infraestrutura', 'Ruas, calcadas, iluminacao e obras.', 'active'),
-  ('saude', 'Saude', 'Atendimento, filas, unidades e prevencao.', 'active'),
-  ('educacao', 'Educacao', 'Escolas, creches, transporte e aprendizagem.', 'active'),
-  ('seguranca', 'Seguranca', 'Iluminacao, rondas e pontos de risco.', 'active'),
-  ('mobilidade', 'Mobilidade', 'Transporte, acessibilidade e transito.', 'active')
-on conflict (slug) do nothing;
+  ('infraestrutura', 'Infraestrutura', 'Ruas, calçadas, iluminação e obras.', 'active'),
+  ('saude', 'Saúde', 'Atendimento, filas, unidades e prevenção.', 'active'),
+  ('educacao', 'Educação', 'Escolas, creches, transporte e aprendizagem.', 'active'),
+  ('seguranca', 'Segurança', 'Iluminação, rondas e pontos de risco.', 'active'),
+  ('mobilidade', 'Mobilidade', 'Transporte, acessibilidade e trânsito.', 'active')
+on conflict (slug) do update
+set title = excluded.title,
+    description = excluded.description,
+    status = excluded.status;
 
 insert into storage.buckets (id, name, public)
 values ('avatars', 'avatars', true)

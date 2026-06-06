@@ -1,8 +1,11 @@
 import "./globals.css";
 
 export const metadata = {
-  title: "Mural Digital",
-  description: "Mural participativo para fotos das ruas, debates e pre-campanha.",
+  title: "Nodus | Fluxo da Informação",
+  description: "Nodus conecta pessoas, ideias, relatos e debates locais.",
+  icons: {
+    icon: "/icon.svg",
+  },
 };
 
 export default function RootLayout({ children }) {

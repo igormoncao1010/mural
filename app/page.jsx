@@ -4,11 +4,11 @@ import { useEffect, useMemo, useState } from "react";
 import { getSupabase } from "../lib/supabase";
 
 const defaultDebates = [
-  { id: "infraestrutura", slug: "infraestrutura", title: "Infraestrutura", description: "Ruas, calcadas, iluminacao e obras." },
-  { id: "saude", slug: "saude", title: "Saude", description: "Atendimento, filas, unidades e prevencao." },
-  { id: "educacao", slug: "educacao", title: "Educacao", description: "Escolas, creches, transporte e aprendizagem." },
-  { id: "seguranca", slug: "seguranca", title: "Seguranca", description: "Iluminacao, rondas e pontos de risco." },
-  { id: "mobilidade", slug: "mobilidade", title: "Mobilidade", description: "Transporte, acessibilidade e transito." },
+  { id: "infraestrutura", slug: "infraestrutura", title: "Infraestrutura", description: "Ruas, calçadas, iluminação e obras." },
+  { id: "saude", slug: "saude", title: "Saúde", description: "Atendimento, filas, unidades e prevenção." },
+  { id: "educacao", slug: "educacao", title: "Educação", description: "Escolas, creches, transporte e aprendizagem." },
+  { id: "seguranca", slug: "seguranca", title: "Segurança", description: "Iluminação, rondas e pontos de risco." },
+  { id: "mobilidade", slug: "mobilidade", title: "Mobilidade", description: "Transporte, acessibilidade e trânsito." },
 ];
 
 const allTopic = { id: "all", slug: "all", title: "Todos", description: "Todos os debates ativos." };
@@ -119,6 +119,7 @@ export default function HomePage() {
         contact: "",
         avatar_url: "",
         role: "member",
+        badge_title: "",
       };
 
       const { data: createdProfile, error: createError } = await supabase
@@ -159,7 +160,7 @@ export default function HomePage() {
   async function loadPosts() {
     const { data, error } = await supabase
       .from("posts")
-      .select("*, author:profiles!posts_user_id_fkey(name, avatar_url, neighborhood), comments(*, commenter:profiles!comments_user_id_fkey(name, avatar_url)), likes(user_id)")
+      .select("*, author:profiles!posts_user_id_fkey(name, avatar_url, neighborhood, role, badge_title), comments(*, commenter:profiles!comments_user_id_fkey(name, avatar_url, role, badge_title)), likes(user_id)")
       .order("created_at", { ascending: false });
 
     if (error) {
@@ -173,7 +174,7 @@ export default function HomePage() {
   async function loadAdminData() {
     const { data, error } = await supabase
       .from("profiles")
-      .select("id, name, email, neighborhood, contact, role, created_at")
+      .select("id, name, email, neighborhood, contact, role, badge_title, created_at")
       .order("created_at", { ascending: false });
 
     if (!error) setAdminProfiles(data || []);
@@ -217,6 +218,7 @@ export default function HomePage() {
           contact: "",
           avatar_url: "",
           role: "member",
+          badge_title: "",
         });
 
         if (profileError) {
@@ -227,7 +229,7 @@ export default function HomePage() {
 
       setMessage(
         data.session
-          ? "Conta criada. Voce ja pode usar o feed."
+          ? "Conta criada. Você já pode usar o feed."
           : "Conta criada. Verifique seu email para confirmar o cadastro."
       );
     } else {
@@ -306,6 +308,7 @@ export default function HomePage() {
     }
 
     event.currentTarget.reset();
+    setMessage("Publicado.");
     await loadPosts();
   }
 
@@ -342,8 +345,10 @@ export default function HomePage() {
 
     if (liked) {
       await supabase.from("likes").delete().eq("post_id", post.id).eq("user_id", session.user.id);
+      setMessage("Curtida removida.");
     } else {
       await supabase.from("likes").insert({ post_id: post.id, user_id: session.user.id });
+      setMessage("Curtido.");
     }
 
     await loadPosts();
@@ -357,13 +362,15 @@ export default function HomePage() {
     try {
       if (navigator.share) {
         await navigator.share({ title, text, url });
-        return;
+      } else {
+        await navigator.clipboard.writeText(`${text}\n${url}`);
       }
 
-      await navigator.clipboard.writeText(`${text}\n${url}`);
-      setMessage("Link do post copiado.");
+      await supabase.rpc("increment_post_share", { post_id_input: post.id });
+      setMessage("Compartilhamento registrado.");
+      await loadPosts();
     } catch {
-      setMessage("Nao foi possivel compartilhar agora.");
+      setMessage("Não foi possível compartilhar agora.");
     }
   }
 
@@ -386,11 +393,12 @@ export default function HomePage() {
 
     event.currentTarget.reset();
     setActiveCommentPostId(postId);
+    setMessage("Comentário enviado.");
     await loadPosts();
   }
 
   async function reportContent({ postId, commentId }) {
-    const reason = window.prompt("Qual problema voce quer relatar?");
+    const reason = window.prompt("Qual problema você quer relatar?");
     if (!reason?.trim()) return;
 
     const { error } = await supabase.from("reports").insert({
@@ -405,13 +413,13 @@ export default function HomePage() {
       return;
     }
 
-    setMessage("Relatorio enviado para o administrador.");
+    setMessage("Relatório enviado para o administrador.");
     if (isAdmin) await loadAdminData();
   }
 
   async function deletePost(post) {
     if (!canDeletePost(post)) return;
-    const confirmed = window.confirm("Excluir esta publicacao?");
+    const confirmed = window.confirm("Excluir esta publicação?");
     if (!confirmed) return;
 
     const { error } = await supabase.from("posts").delete().eq("id", post.id);
@@ -420,14 +428,14 @@ export default function HomePage() {
       return;
     }
 
-    setMessage("Publicacao excluida.");
+    setMessage("Publicação excluída.");
     await loadPosts();
     if (isAdmin) await loadAdminData();
   }
 
   async function deleteComment(comment) {
     if (!canDeleteComment(comment)) return;
-    const confirmed = window.confirm("Excluir este comentario?");
+    const confirmed = window.confirm("Excluir este comentário?");
     if (!confirmed) return;
 
     const { error } = await supabase.from("comments").delete().eq("id", comment.id);
@@ -436,14 +444,14 @@ export default function HomePage() {
       return;
     }
 
-    setMessage("Comentario excluido.");
+    setMessage("Comentário excluído.");
     await loadPosts();
     if (isAdmin) await loadAdminData();
   }
 
   async function deleteProfile(person) {
     if (!isAdmin || person.id === session.user.id) return;
-    const confirmed = window.confirm(`Excluir o perfil de ${person.name || person.email}? Isso tambem remove posts e comentarios desse perfil.`);
+    const confirmed = window.confirm(`Excluir o perfil de ${person.name || person.email}? Isso também remove posts e comentários desse perfil.`);
     if (!confirmed) return;
 
     const { error } = await supabase.from("profiles").delete().eq("id", person.id);
@@ -452,9 +460,32 @@ export default function HomePage() {
       return;
     }
 
-    setMessage("Perfil excluido da plataforma.");
+    setMessage("Perfil excluído da plataforma.");
     await loadPosts();
     await loadAdminData();
+  }
+
+  async function updateUserBadge(event, person) {
+    event.preventDefault();
+    if (!isAdmin) return;
+
+    const form = new FormData(event.currentTarget);
+    const role = String(form.get("role") || "member");
+    const badgeTitle = String(form.get("badge_title") || "").trim();
+
+    const { error } = await supabase
+      .from("profiles")
+      .update({ role, badge_title: badgeTitle })
+      .eq("id", person.id);
+
+    if (error) {
+      setMessage(error.message);
+      return;
+    }
+
+    setMessage("Insígnia atualizada.");
+    await loadAdminData();
+    await loadPosts();
   }
 
   async function signOut() {
@@ -491,11 +522,11 @@ export default function HomePage() {
   ).length;
   const adminMetrics = [
     { label: "Cadastros", value: adminProfiles.length },
-    { label: "Usuarios Brasilia", value: brasiliaUsers || adminProfiles.length },
-    { label: "Publicacoes", value: posts.length },
-    { label: "Comentarios", value: totalComments },
+    { label: "Usuários Brasília", value: brasiliaUsers || adminProfiles.length },
+    { label: "Publicações", value: posts.length },
+    { label: "Comentários", value: totalComments },
     { label: "Curtidas", value: totalLikes },
-    { label: "Relatorios", value: adminReports.length },
+    { label: "Relatórios", value: adminReports.length },
     { label: "Debates ativos", value: activeDebates.length },
   ];
 
@@ -503,7 +534,7 @@ export default function HomePage() {
     return (
       <main className="setup-screen">
         <section className="setup-card">
-          <p className="eyebrow">Configuracao pendente</p>
+          <p className="eyebrow">Configuração pendente</p>
           <h1>Adicione as chaves do Supabase para ativar o Nodus.</h1>
           <p>Copie `.env.example` para `.env.local` e preencha `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_ANON_KEY`.</p>
         </section>
@@ -527,7 +558,7 @@ export default function HomePage() {
             <button className={authMode === "login" ? "active" : ""} onClick={() => setAuthMode("login")} type="button">Login</button>
             <button className={authMode === "register" ? "active" : ""} onClick={() => setAuthMode("register")} type="button">Cadastro</button>
           </div>
-          {authMode === "register" && <input name="name" placeholder="Nome publico" required />}
+          {authMode === "register" && <input name="name" placeholder="Nome público" required />}
           <input name="email" placeholder={authMode === "login" ? "Email ou admin" : "Email"} required type={authMode === "login" ? "text" : "email"} />
           <input minLength={6} name="password" placeholder="Senha" required type="password" />
           <button className="primary-button" type="submit">{authMode === "login" ? "Entrar" : "Criar conta"}</button>
@@ -548,7 +579,7 @@ export default function HomePage() {
           </div>
         </div>
 
-        <nav className="side-nav" aria-label="Navegacao principal">
+        <nav className="side-nav" aria-label="Navegação principal">
           <button className={activeView === "feed" ? "side-nav-item active" : "side-nav-item"} onClick={() => setActiveView("feed")} type="button">Feed</button>
           <button className={activeView === "debates" ? "side-nav-item active" : "side-nav-item"} onClick={() => setActiveView("debates")} type="button">Debates</button>
           {isAdmin && (
@@ -562,13 +593,13 @@ export default function HomePage() {
             <strong>{profile?.name || session.user.email}</strong>
             <small>{profile?.neighborhood || "Perfil sem bairro"}</small>
           </div>
-          <button className="icon-button" onClick={() => setShowProfileSettings((open) => !open)} title="Configuracoes do perfil" type="button">{"\u2699"}</button>
+          <button className="icon-button" onClick={() => setShowProfileSettings((open) => !open)} title="Configurações do perfil" type="button">{"\u2699"}</button>
         </div>
 
         <div className="sidebar-stats">
           <span><strong>{posts.length}</strong> posts</span>
           <span><strong>{userPosts}</strong> seus posts</span>
-          <span><strong>{userComments}</strong> comentarios</span>
+          <span><strong>{userComments}</strong> comentários</span>
         </div>
 
         <button className="ghost-button logout-button" onClick={signOut} type="button">Sair</button>
@@ -601,6 +632,7 @@ export default function HomePage() {
             onDeletePost={deletePost}
             onDeleteProfile={deleteProfile}
             onRefresh={loadAdminData}
+            onUpdateBadge={updateUserBadge}
           />
         ) : (
           <div className="social-layout">
@@ -668,7 +700,8 @@ export default function HomePage() {
                         <Avatar profile={post.author} />
                         <div>
                           <strong>{post.author?.name || "Morador"}</strong>
-                          <small>{post.street || "Rua nao informada"} {post.neighborhood ? `- ${post.neighborhood}` : ""}</small>
+                          <small>{post.street || "Rua não informada"} {post.neighborhood ? `- ${post.neighborhood}` : ""}</small>
+                          <Badge profile={post.author} />
                         </div>
                         <span>{topicLabel(post.topic, activeDebates)}</span>
                         {canDeletePost(post) && (
@@ -679,31 +712,32 @@ export default function HomePage() {
                       <p className="post-text">{post.body}</p>
                       {post.image_url && <img alt="Foto publicada no Nodus" className="post-image" src={post.image_url} />}
 
-                      <div className="engagement-row">
-                        <span>{post.likes?.length || 0} curtidas</span>
-                        <span>{post.comments?.length || 0} comentarios</span>
-                      </div>
-
                       <div className="post-actions">
                         <button className={liked ? "action-button liked" : "action-button"} onClick={() => toggleLike(post)} title={liked ? "Curtido" : "Curtir"} type="button">
                           <HeartIcon filled={liked} />
+                          <span>{post.likes?.length || 0}</span>
                         </button>
-                        <button className="action-button" onClick={() => setActiveCommentPostId(commentsOpen ? null : post.id)} title={commentsOpen ? "Ocultar comentarios" : "Ver comentarios"} type="button">
+                        <button className="action-button" onClick={() => setActiveCommentPostId(commentsOpen ? null : post.id)} title={commentsOpen ? "Ocultar comentários" : "Ver comentários"} type="button">
                           <CommentIcon />
+                          <span>{post.comments?.length || 0}</span>
                         </button>
-                        <button className="action-button" onClick={() => sharePost(post)} title="Compartilhar" type="button"><ShareIcon /></button>
+                        <button className="action-button" onClick={() => sharePost(post)} title="Compartilhar" type="button">
+                          <ShareIcon />
+                          <span>{post.share_count || 0}</span>
+                        </button>
                         <button className="action-button report-action" onClick={() => reportContent({ postId: post.id })} title="Relatar problema" type="button"><FlagIcon /></button>
                       </div>
 
                       {commentsOpen && (
                         <>
                           <div className="comments">
-                            {(post.comments || []).length === 0 && <p className="empty-comments">Ainda nao ha comentarios.</p>}
+                            {(post.comments || []).length === 0 && <p className="empty-comments">Ainda não há comentários.</p>}
                             {(post.comments || []).map((comment) => (
                               <div className="comment" key={comment.id}>
                                 <Avatar profile={comment.commenter} />
                                 <div>
                                   <strong>{comment.commenter?.name || "Morador"}</strong>
+                                  <Badge profile={comment.commenter} />
                                   <span>{comment.body}</span>
                                 </div>
                                 {canDeleteComment(comment) && (
@@ -716,7 +750,7 @@ export default function HomePage() {
 
                           <form className="comment-form" onSubmit={(event) => addComment(event, post.id)}>
                             <Avatar profile={profile} />
-                            <input name="comment" placeholder="Escreva um comentario" />
+                            <input name="comment" placeholder="Escreva um comentário" />
                             <button type="submit">Enviar</button>
                           </form>
                         </>
@@ -731,13 +765,13 @@ export default function HomePage() {
               {showProfileSettings && (
                 <section className="profile-editor">
                   <div className="panel-title">
-                    <h2>Configuracoes</h2>
+                    <h2>Configurações</h2>
                     <Avatar profile={profile} />
                   </div>
                   <form onSubmit={updateProfile}>
-                    <input defaultValue={profile?.name || ""} name="name" placeholder="Nome publico" required />
-                    <input defaultValue={profile?.neighborhood || ""} name="neighborhood" placeholder="Bairro / regiao" />
-                    <input defaultValue={profile?.contact || ""} name="contact" placeholder="Contato publico" />
+                    <input defaultValue={profile?.name || ""} name="name" placeholder="Nome público" required />
+                    <input defaultValue={profile?.neighborhood || ""} name="neighborhood" placeholder="Bairro / região" />
+                    <input defaultValue={profile?.contact || ""} name="contact" placeholder="Contato público" />
                     <textarea defaultValue={profile?.bio || ""} name="bio" placeholder="Bio curta" />
                     <label className="upload-line">
                       Foto de perfil
@@ -772,13 +806,13 @@ function DebatesView({ debates, isAdmin, onCreateDebate, onSelectDebate, posts }
     <section className="view-panel">
       <header className="view-header">
         <p className="eyebrow">Debates</p>
-        <h1>Debates ativos</h1>
+      <h1>Debates ativos</h1>
       </header>
 
       {isAdmin && (
         <form className="admin-form" onSubmit={onCreateDebate}>
           <input name="title" placeholder="Novo debate" required />
-          <input name="description" placeholder="Descricao curta" />
+          <input name="description" placeholder="Descrição curta" />
           <button className="primary-button" type="submit">Criar debate</button>
         </form>
       )}
@@ -788,7 +822,7 @@ function DebatesView({ debates, isAdmin, onCreateDebate, onSelectDebate, posts }
           <article className="debate-card" key={debate.slug}>
             <div>
               <h2>{debate.title}</h2>
-              <p>{debate.description || "Debate aberto pelo administrador da pagina."}</p>
+              <p>{debate.description || "Debate aberto pelo administrador da página."}</p>
             </div>
             <strong>{posts.filter((post) => post.topic === debate.slug).length} posts</strong>
             <button className="ghost-button" onClick={() => onSelectDebate(debate.slug)} type="button">Abrir no feed</button>
@@ -799,7 +833,7 @@ function DebatesView({ debates, isAdmin, onCreateDebate, onSelectDebate, posts }
   );
 }
 
-function AdminView({ activeTab, debates, metrics, onChangeTab, onDeleteComment, onDeletePost, onDeleteProfile, onRefresh, posts, profiles, reports }) {
+function AdminView({ activeTab, debates, metrics, onChangeTab, onDeleteComment, onDeletePost, onDeleteProfile, onRefresh, onUpdateBadge, posts, profiles, reports }) {
   const allComments = posts.flatMap((post) =>
     (post.comments || []).map((comment) => ({
       ...comment,
@@ -808,7 +842,7 @@ function AdminView({ activeTab, debates, metrics, onChangeTab, onDeleteComment, 
     }))
   );
   const neighborhoods = profiles.reduce((items, person) => {
-    const key = person.neighborhood || "Nao informado";
+    const key = person.neighborhood || "Não informado";
     items[key] = (items[key] || 0) + 1;
     return items;
   }, {});
@@ -818,8 +852,8 @@ function AdminView({ activeTab, debates, metrics, onChangeTab, onDeleteComment, 
     .join(", ");
   const issueRows = Object.values(
     reports.reduce((items, report) => {
-      const category = report.post?.topic || (report.comment ? "comentario" : "geral");
-      const city = report.post?.neighborhood || report.reporter?.neighborhood || "Nao informado";
+      const category = report.post?.topic || (report.comment ? "comentário" : "geral");
+      const city = report.post?.neighborhood || report.reporter?.neighborhood || "Não informado";
       const key = `${category}__${city}`;
       if (!items[key]) items[key] = { category, city, count: 0 };
       items[key].count += 1;
@@ -829,7 +863,7 @@ function AdminView({ activeTab, debates, metrics, onChangeTab, onDeleteComment, 
 
   function downloadReport() {
     const rows = [
-      ["categoria", "cidade_ou_regiao", "quantidade"],
+      ["categoria", "cidade_ou_região", "quantidade"],
       ...issueRows.map((row) => [row.category, row.city, row.count]),
       [],
       ["nome", "email", "contato", "bairro", "perfil"],
@@ -850,14 +884,14 @@ function AdminView({ activeTab, debates, metrics, onChangeTab, onDeleteComment, 
       <header className="view-header">
         <p className="eyebrow">Administrador geral</p>
         <h1>Dashboard de controle</h1>
-        <button className="ghost-button report-download" onClick={downloadReport} type="button">Baixar relatorio</button>
+        <button className="ghost-button report-download" onClick={downloadReport} type="button">Baixar relatório</button>
       </header>
 
       <div className="admin-tabs">
-        <button className={activeTab === "overview" ? "active" : ""} onClick={() => onChangeTab("overview")} type="button">Metricas</button>
-        <button className={activeTab === "users" ? "active" : ""} onClick={() => onChangeTab("users")} type="button">Usuarios e leads</button>
-        <button className={activeTab === "content" ? "active" : ""} onClick={() => onChangeTab("content")} type="button">Conteudo</button>
-        <button className={activeTab === "reports" ? "active" : ""} onClick={() => onChangeTab("reports")} type="button">Relatorios</button>
+        <button className={activeTab === "overview" ? "active" : ""} onClick={() => onChangeTab("overview")} type="button">Métricas</button>
+        <button className={activeTab === "users" ? "active" : ""} onClick={() => onChangeTab("users")} type="button">Usuários e leads</button>
+        <button className={activeTab === "content" ? "active" : ""} onClick={() => onChangeTab("content")} type="button">Conteúdo</button>
+        <button className={activeTab === "reports" ? "active" : ""} onClick={() => onChangeTab("reports")} type="button">Relatórios</button>
       </div>
 
       {activeTab === "overview" && (
@@ -874,7 +908,7 @@ function AdminView({ activeTab, debates, metrics, onChangeTab, onDeleteComment, 
       <section className="admin-table">
         <div className="panel-title">
               <h2>Regioes de Brasilia</h2>
-              <small>Quantidade de usuarios por bairro/regiao</small>
+              <small>Quantidade de usuários por bairro/região</small>
         </div>
             <div className="topic-list">
               {Object.entries(neighborhoods).map(([name, count]) => (
@@ -936,7 +970,8 @@ function AdminView({ activeTab, debates, metrics, onChangeTab, onDeleteComment, 
                   <th>Contato</th>
                   <th>Bairro</th>
                   <th>Perfil</th>
-                  <th>Acao</th>
+                  <th>Insígnia</th>
+                  <th>Ação</th>
                 </tr>
               </thead>
               <tbody>
@@ -947,6 +982,18 @@ function AdminView({ activeTab, debates, metrics, onChangeTab, onDeleteComment, 
                     <td>{person.contact || "-"}</td>
                     <td>{person.neighborhood || "-"}</td>
                     <td>{person.role || "member"}</td>
+                    <td>
+                      <form className="badge-form" onSubmit={(event) => onUpdateBadge(event, person)}>
+                        <select defaultValue={person.role || "member"} name="role">
+                          <option value="member">Membro</option>
+                          <option value="moderator">Moderador</option>
+                          <option value="organizer">Organizador</option>
+                          <option value="admin">Administrador</option>
+                        </select>
+                        <input defaultValue={person.badge_title || ""} name="badge_title" placeholder="Título ou insígnia" />
+                        <button className="ghost-button" type="submit">Salvar</button>
+                      </form>
+                    </td>
                     <td><button className="delete-button" onClick={() => onDeleteProfile(person)} type="button">Excluir perfil</button></td>
                   </tr>
                 ))}
@@ -970,8 +1017,8 @@ function AdminView({ activeTab, debates, metrics, onChangeTab, onDeleteComment, 
                     <th>Autor</th>
                     <th>Local</th>
                     <th>Debate</th>
-                    <th>Conteudo</th>
-                    <th>Acao</th>
+                    <th>Conteúdo</th>
+                    <th>Ação</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -991,17 +1038,17 @@ function AdminView({ activeTab, debates, metrics, onChangeTab, onDeleteComment, 
 
           <section className="admin-table">
             <div className="panel-title">
-              <h2>Comentarios</h2>
-              <small>{allComments.length} comentarios</small>
+              <h2>Comentários</h2>
+              <small>{allComments.length} comentários</small>
             </div>
             <div className="table-scroll">
               <table>
                 <thead>
                   <tr>
                     <th>Autor</th>
-                    <th>Comentario</th>
+                    <th>Comentário</th>
                     <th>Post</th>
-                    <th>Acao</th>
+                    <th>Ação</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1010,7 +1057,7 @@ function AdminView({ activeTab, debates, metrics, onChangeTab, onDeleteComment, 
                       <td>{comment.commenter?.name || "Morador"}</td>
                       <td>{comment.body}</td>
                       <td>{comment.postStreet || "-"} | {comment.postBody}</td>
-                      <td><button className="delete-button" onClick={() => onDeleteComment(comment)} type="button">Excluir comentario</button></td>
+                      <td><button className="delete-button" onClick={() => onDeleteComment(comment)} type="button">Excluir comentário</button></td>
                     </tr>
                   ))}
                 </tbody>
@@ -1023,7 +1070,7 @@ function AdminView({ activeTab, debates, metrics, onChangeTab, onDeleteComment, 
       {activeTab === "reports" && (
         <section className="admin-table">
           <div className="panel-title">
-            <h2>Relatorios de problemas</h2>
+            <h2>Relatórios de problemas</h2>
             <small>{reports.length} relatos</small>
           </div>
           <div className="table-scroll">
@@ -1032,8 +1079,8 @@ function AdminView({ activeTab, debates, metrics, onChangeTab, onDeleteComment, 
                 <tr>
                   <th>Quem relatou</th>
                   <th>Problema</th>
-                  <th>Conteudo</th>
-                  <th>Acao</th>
+                  <th>Conteúdo</th>
+                  <th>Ação</th>
                 </tr>
               </thead>
               <tbody>
@@ -1044,7 +1091,7 @@ function AdminView({ activeTab, debates, metrics, onChangeTab, onDeleteComment, 
                     <td>{report.post?.body || report.comment?.body || "-"}</td>
                     <td>
                       {report.post && <button className="delete-button" onClick={() => onDeletePost({ id: report.post_id, user_id: report.post.user_id })} type="button">Excluir post</button>}
-                      {report.comment && <button className="delete-button" onClick={() => onDeleteComment({ id: report.comment_id, user_id: report.comment.user_id })} type="button">Excluir comentario</button>}
+                      {report.comment && <button className="delete-button" onClick={() => onDeleteComment({ id: report.comment_id, user_id: report.comment.user_id })} type="button">Excluir comentário</button>}
                     </td>
                   </tr>
                 ))}
@@ -1071,6 +1118,19 @@ function Avatar({ profile }) {
     .toUpperCase();
 
   return <div className="avatar">{initials}</div>;
+}
+
+function Badge({ profile }) {
+  const label = profile?.badge_title || getRoleLabel(profile?.role);
+  if (!label) return null;
+  return <span className="profile-badge">{label}</span>;
+}
+
+function getRoleLabel(role) {
+  if (role === "admin") return "Administrador";
+  if (role === "moderator") return "Moderador";
+  if (role === "organizer") return "Organizador";
+  return "";
 }
 
 function PaperclipIcon() {

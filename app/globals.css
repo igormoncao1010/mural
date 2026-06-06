@@ -225,10 +225,9 @@ small {
   height: 42px;
   display: grid;
   place-items: center;
-  border: 1px solid var(--ink);
   border-radius: 8px;
-  color: var(--ink);
-  background: var(--surface);
+  color: #fff;
+  background: #050505;
   font-size: 1.2rem;
   font-weight: 1000;
 }
@@ -514,24 +513,37 @@ small {
 }
 
 .post-actions {
-  display: grid;
-  grid-template-columns: repeat(4, 42px);
-  justify-content: start;
-  gap: 2px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
   padding: 8px 10px 10px;
 }
 
 .action-button {
-  width: 42px;
+  width: auto;
+  min-width: 42px;
   height: 42px;
   min-height: 42px;
-  display: grid;
-  place-items: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 9px;
   border: 0;
   border-radius: 8px;
   color: var(--ink);
   background: transparent;
   font-weight: 800;
+}
+
+.action-button span {
+  min-width: 1ch;
+  font-size: 0.92rem;
+}
+
+.report-action {
+  margin-left: auto;
+  color: var(--muted);
 }
 
 .action-button:hover,
@@ -568,10 +580,6 @@ small {
   stroke: var(--danger);
 }
 
-.report-action {
-  color: var(--muted);
-}
-
 .delete-button {
   min-height: 34px;
   border: 1px solid #ffd2d6;
@@ -580,6 +588,21 @@ small {
   color: var(--danger);
   background: #fff5f6;
   font-size: 0.82rem;
+  font-weight: 900;
+}
+
+.profile-badge {
+  width: fit-content;
+  display: inline-flex;
+  align-items: center;
+  min-height: 20px;
+  margin-top: 4px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 2px 8px;
+  color: var(--muted);
+  background: var(--surface);
+  font-size: 0.72rem;
   font-weight: 900;
 }
 
@@ -805,6 +828,13 @@ small {
   line-height: 1.5;
 }
 
+.badge-form {
+  min-width: 420px;
+  display: grid;
+  grid-template-columns: 140px minmax(160px, 1fr) auto;
+  gap: 8px;
+}
+
 .table-scroll {
   overflow-x: auto;
 }
@@ -917,6 +947,11 @@ th {
   .metrics-grid {
     grid-template-columns: 1fr;
   }
+
+  .badge-form {
+    min-width: 0;
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 560px) {
@@ -936,7 +971,14 @@ th {
   }
 
   .post-actions {
-    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+
+  .action-button {
+    min-width: 38px;
+    padding: 0 7px;
   }
 
   .comment-form {
