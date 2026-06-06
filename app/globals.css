@@ -349,6 +349,12 @@ small {
   letter-spacing: 0;
 }
 
+.feed-topbar .feed-title {
+  font-size: 1.05rem;
+  line-height: 1.2;
+  font-weight: 1000;
+}
+
 .feed-search {
   width: min(100%, 420px);
   display: grid;
@@ -370,8 +376,9 @@ small {
 
 .composer {
   display: grid;
-  gap: 14px;
-  padding: 14px;
+  gap: 12px;
+  padding: 16px;
+  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.04);
 }
 
 .composer-user {
@@ -384,6 +391,20 @@ small {
   gap: 10px;
 }
 
+.composer-textarea {
+  min-height: 92px;
+  border: 0;
+  border-radius: 8px;
+  padding: 12px 0 2px;
+  background: transparent;
+  font-size: 1rem;
+  line-height: 1.45;
+}
+
+.composer-textarea:focus {
+  box-shadow: none;
+}
+
 .form-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -393,7 +414,10 @@ small {
 .composer-footer {
   display: flex;
   justify-content: space-between;
+  align-items: center;
   gap: 10px;
+  padding-top: 4px;
+  border-top: 1px solid var(--line-soft);
 }
 
 .upload-button,
@@ -410,11 +434,19 @@ small {
   font-weight: 800;
 }
 
+.upload-button {
+  width: auto;
+  min-width: 148px;
+  justify-content: center;
+}
+
 .upload-button input,
 .upload-line input {
-  border: 0;
-  padding: 0;
-  background: transparent;
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
 }
 
 .feed {
@@ -483,13 +515,18 @@ small {
 
 .post-actions {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 4px;
+  grid-template-columns: repeat(4, 42px);
+  justify-content: start;
+  gap: 2px;
   padding: 8px 10px 10px;
 }
 
 .action-button {
-  min-height: 40px;
+  width: 42px;
+  height: 42px;
+  min-height: 42px;
+  display: grid;
+  place-items: center;
   border: 0;
   border-radius: 8px;
   color: var(--ink);
@@ -509,6 +546,30 @@ small {
 .heart-icon {
   color: var(--danger);
   margin-right: 6px;
+}
+
+.ui-icon {
+  width: 21px;
+  height: 21px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.ui-icon.heart {
+  color: var(--ink);
+}
+
+.ui-icon.heart.filled {
+  color: var(--danger);
+  fill: var(--danger);
+  stroke: var(--danger);
+}
+
+.report-action {
+  color: var(--muted);
 }
 
 .delete-button {
@@ -645,7 +706,17 @@ small {
 
 .view-header {
   display: grid;
-  gap: 4px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 4px 14px;
+  align-items: end;
+}
+
+.view-header .eyebrow {
+  grid-column: 1 / -1;
+}
+
+.report-download {
+  align-self: center;
 }
 
 .admin-form {

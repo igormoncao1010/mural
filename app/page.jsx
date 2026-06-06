@@ -608,7 +608,7 @@ export default function HomePage() {
               <header className="feed-topbar">
                 <div>
                   <p className="eyebrow">Comunidade local</p>
-                  <h1>Nodus Feed</h1>
+                  <h1 className="feed-title">Feed</h1>
                 </div>
                 <div className="feed-search">
                   <input onChange={(event) => setQuery(event.target.value)} placeholder="Buscar rua, bairro ou assunto" />
@@ -629,7 +629,7 @@ export default function HomePage() {
                   </div>
                 </div>
                 <form onSubmit={createPost}>
-                  <textarea maxLength={500} name="body" placeholder="O que voce viu na rua hoje?" required />
+                  <textarea className="composer-textarea" maxLength={500} name="body" placeholder="Compartilhe uma cena, uma ideia ou um problema da cidade." required />
                   <div className="form-grid">
                     <select name="topic" required>
                       {activeDebates.map((topic) => (
@@ -641,7 +641,8 @@ export default function HomePage() {
                   </div>
                   <div className="composer-footer">
                     <label className="upload-button">
-                      Foto
+                      <PaperclipIcon />
+                      <span>Anexar foto</span>
                       <input accept="image/*" name="image" type="file" />
                     </label>
                     <button className="primary-button" type="submit">Publicar</button>
@@ -684,14 +685,14 @@ export default function HomePage() {
                       </div>
 
                       <div className="post-actions">
-                        <button className={liked ? "action-button liked" : "action-button"} onClick={() => toggleLike(post)} type="button">
-                          <span className="heart-icon" aria-hidden="true">{"\u2665"}</span>{liked ? "Curtido" : "Curtir"}
+                        <button className={liked ? "action-button liked" : "action-button"} onClick={() => toggleLike(post)} title={liked ? "Curtido" : "Curtir"} type="button">
+                          <HeartIcon filled={liked} />
                         </button>
-                        <button className="action-button" onClick={() => setActiveCommentPostId(commentsOpen ? null : post.id)} type="button">
-                          {commentsOpen ? "Ocultar comentarios" : `Ver comentarios (${post.comments?.length || 0})`}
+                        <button className="action-button" onClick={() => setActiveCommentPostId(commentsOpen ? null : post.id)} title={commentsOpen ? "Ocultar comentarios" : "Ver comentarios"} type="button">
+                          <CommentIcon />
                         </button>
-                        <button className="action-button" onClick={() => sharePost(post)} type="button">Compartilhar</button>
-                        <button className="action-button" onClick={() => reportContent({ postId: post.id })} type="button">Relatar</button>
+                        <button className="action-button" onClick={() => sharePost(post)} title="Compartilhar" type="button"><ShareIcon /></button>
+                        <button className="action-button report-action" onClick={() => reportContent({ postId: post.id })} title="Relatar problema" type="button"><FlagIcon /></button>
                       </div>
 
                       {commentsOpen && (
@@ -815,12 +816,41 @@ function AdminView({ activeTab, debates, metrics, onChangeTab, onDeleteComment, 
     .map((person) => person.email)
     .filter(Boolean)
     .join(", ");
+  const issueRows = Object.values(
+    reports.reduce((items, report) => {
+      const category = report.post?.topic || (report.comment ? "comentario" : "geral");
+      const city = report.post?.neighborhood || report.reporter?.neighborhood || "Nao informado";
+      const key = `${category}__${city}`;
+      if (!items[key]) items[key] = { category, city, count: 0 };
+      items[key].count += 1;
+      return items;
+    }, {})
+  ).sort((a, b) => b.count - a.count);
+
+  function downloadReport() {
+    const rows = [
+      ["categoria", "cidade_ou_regiao", "quantidade"],
+      ...issueRows.map((row) => [row.category, row.city, row.count]),
+      [],
+      ["nome", "email", "contato", "bairro", "perfil"],
+      ...profiles.map((person) => [person.name || "", person.email || "", person.contact || "", person.neighborhood || "", person.role || "member"]),
+    ];
+    const csv = rows.map((row) => row.map(escapeCsv).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `nodus-relatorio-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
 
   return (
     <section className="view-panel">
       <header className="view-header">
         <p className="eyebrow">Administrador geral</p>
         <h1>Dashboard de controle</h1>
+        <button className="ghost-button report-download" onClick={downloadReport} type="button">Baixar relatorio</button>
       </header>
 
       <div className="admin-tabs">
@@ -866,6 +896,22 @@ function AdminView({ activeTab, debates, metrics, onChangeTab, onDeleteComment, 
                 <div className="topic-item read-only" key={debate.slug}>
                   <span>{debate.title}</span>
                   <strong>ativo</strong>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="admin-table">
+            <div className="panel-title">
+              <h2>Problemas por categoria e cidade</h2>
+              <small>{reports.length} relatos recebidos</small>
+            </div>
+            <div className="topic-list">
+              {issueRows.length === 0 && <div className="topic-item read-only"><span>Nenhum problema relatado</span><strong>0</strong></div>}
+              {issueRows.map((row) => (
+                <div className="topic-item read-only" key={`${row.category}-${row.city}`}>
+                  <span>{row.category} / {row.city}</span>
+                  <strong>{row.count}</strong>
                 </div>
               ))}
             </div>
@@ -1025,6 +1071,51 @@ function Avatar({ profile }) {
     .toUpperCase();
 
   return <div className="avatar">{initials}</div>;
+}
+
+function PaperclipIcon() {
+  return (
+    <svg aria-hidden="true" className="ui-icon" viewBox="0 0 24 24">
+      <path d="M8 12.6l6.8-6.8a3.2 3.2 0 014.5 4.5l-8 8a5 5 0 01-7.1-7.1l8.4-8.4" />
+    </svg>
+  );
+}
+
+function HeartIcon({ filled }) {
+  return (
+    <svg aria-hidden="true" className={filled ? "ui-icon heart filled" : "ui-icon heart"} viewBox="0 0 24 24">
+      <path d="M20.4 5.6a5 5 0 00-7.1 0L12 6.9l-1.3-1.3a5 5 0 00-7.1 7.1L12 21l8.4-8.3a5 5 0 000-7.1z" />
+    </svg>
+  );
+}
+
+function CommentIcon() {
+  return (
+    <svg aria-hidden="true" className="ui-icon" viewBox="0 0 24 24">
+      <path d="M21 11.5a8.4 8.4 0 01-8.7 8.4 9.7 9.7 0 01-4-.8L3 20l1.4-4.1A8 8 0 013 11.5a8.4 8.4 0 018.7-8.4A8.4 8.4 0 0121 11.5z" />
+    </svg>
+  );
+}
+
+function ShareIcon() {
+  return (
+    <svg aria-hidden="true" className="ui-icon" viewBox="0 0 24 24">
+      <path d="M4 12l17-8-7.2 17-2.6-7.6L4 12z" />
+    </svg>
+  );
+}
+
+function FlagIcon() {
+  return (
+    <svg aria-hidden="true" className="ui-icon" viewBox="0 0 24 24">
+      <path d="M5 21V4h11l-1 4 1 4H5" />
+    </svg>
+  );
+}
+
+function escapeCsv(value) {
+  const text = String(value ?? "");
+  return `"${text.replace(/"/g, '""')}"`;
 }
 
 function topicLabel(topicId, debates) {
