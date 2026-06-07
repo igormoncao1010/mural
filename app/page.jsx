@@ -490,10 +490,10 @@ export default function HomePage() {
     let avatarUrl = profile?.avatar_url || "";
 
     if (avatar?.size) {
-      const path = `${session.user.id}/${Date.now()}-${avatar.name}`;
+      const path = createStoragePath(session.user.id, avatar, "perfil");
       const { error: uploadError } = await supabase.storage.from("avatars").upload(path, avatar, { upsert: true });
       if (uploadError) {
-        setMessage(uploadError.message);
+        setMessage("Não foi possível enviar a foto. Tente outra imagem.");
         return;
       }
       avatarUrl = supabase.storage.from("avatars").getPublicUrl(path).data.publicUrl;
@@ -569,10 +569,10 @@ export default function HomePage() {
     if (postImageFile?.size) {
       setPostStatus("Enviando foto...");
       setPostProgress(38);
-      const path = `${session.user.id}/${Date.now()}-${postImageFile.name}`;
+      const path = createStoragePath(session.user.id, postImageFile, "post");
       const { error: uploadError } = await supabase.storage.from("post-images").upload(path, postImageFile);
       if (uploadError) {
-        setMessage(uploadError.message);
+        setMessage("Não foi possível enviar a foto. Tente outra imagem.");
         setPosting(false);
         setPostStatus("");
         setPostProgress(0);
@@ -3014,6 +3014,16 @@ function slugify(value) {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 60);
+}
+
+function createStoragePath(userId, file, prefix) {
+  const originalName = file?.name || "imagem";
+  const extension = originalName.includes(".")
+    ? originalName.split(".").pop().toLowerCase().replace(/[^a-z0-9]/g, "")
+    : "jpg";
+  const safeExtension = extension || "jpg";
+  const safeName = slugify(originalName.replace(/\.[^.]+$/, "")) || "imagem";
+  return `${userId}/${prefix}-${Date.now()}-${safeName}.${safeExtension}`;
 }
 
 function getFriendlyAuthMessage(message) {
