@@ -28,16 +28,16 @@ const issueStatuses = [
 ];
 
 const candidatePrompts = [
-  { name: "Ana Martins", role: "Educação", image: "https://randomuser.me/api/portraits/women/68.jpg" },
-  { name: "Carlos Rocha", role: "Infraestrutura", image: "https://randomuser.me/api/portraits/men/32.jpg" },
-  { name: "Marina Alves", role: "Saúde", image: "https://randomuser.me/api/portraits/women/44.jpg" },
-  { name: "Rafael Lima", role: "Mobilidade", image: "https://randomuser.me/api/portraits/men/46.jpg" },
-  { name: "Bianca Torres", role: "Segurança", image: "https://randomuser.me/api/portraits/women/12.jpg" },
-  { name: "Henrique Nunes", role: "Juventude", image: "https://randomuser.me/api/portraits/men/22.jpg" },
-  { name: "Paula Ribeiro", role: "Cultura", image: "https://randomuser.me/api/portraits/women/28.jpg" },
-  { name: "Leandro Costa", role: "Trabalho", image: "https://randomuser.me/api/portraits/men/55.jpg" },
-  { name: "Sofia Campos", role: "Meio ambiente", image: "https://randomuser.me/api/portraits/women/75.jpg" },
-  { name: "Diego Freitas", role: "Comunidade", image: "https://randomuser.me/api/portraits/men/71.jpg" },
+  { name: "Ana Martins", role: "Educação", image: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=420&q=80" },
+  { name: "Carlos Rocha", role: "Infraestrutura", image: "https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=420&q=80" },
+  { name: "Marina Alves", role: "Saúde", image: "https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=420&q=80" },
+  { name: "Rafael Lima", role: "Mobilidade", image: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=420&q=80" },
+  { name: "Bianca Torres", role: "Segurança", image: "https://images.unsplash.com/photo-1598550874175-4d0ef436c909?auto=format&fit=crop&w=420&q=80" },
+  { name: "Henrique Nunes", role: "Juventude", image: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=420&q=80" },
+  { name: "Paula Ribeiro", role: "Cultura", image: "https://images.unsplash.com/photo-1551836022-d5d88e9218df?auto=format&fit=crop&w=420&q=80" },
+  { name: "Leandro Costa", role: "Trabalho", image: "https://images.unsplash.com/photo-1568602471122-7832951cc4c5?auto=format&fit=crop&w=420&q=80" },
+  { name: "Sofia Campos", role: "Meio ambiente", image: "https://images.unsplash.com/photo-1607746882042-944635dfe10e?auto=format&fit=crop&w=420&q=80" },
+  { name: "Diego Freitas", role: "Comunidade", image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=420&q=80" },
 ];
 
 const FEED_PAGE_SIZE = 10;
@@ -52,6 +52,7 @@ export default function HomePage() {
   const [debates, setDebates] = useState(defaultDebates);
   const [adminProfiles, setAdminProfiles] = useState([]);
   const [adminReports, setAdminReports] = useState([]);
+  const [adminPosts, setAdminPosts] = useState([]);
   const [notifications, setNotifications] = useState([]);
   const [follows, setFollows] = useState([]);
   const [showAlerts, setShowAlerts] = useState(false);
@@ -111,6 +112,7 @@ export default function HomePage() {
     if (!session?.user || !supabase) {
       setProfile(null);
       setPosts([]);
+      setAdminPosts([]);
       setNotifications([]);
       setFollows([]);
       return;
@@ -360,6 +362,35 @@ export default function HomePage() {
     }
   }
 
+  function toggleView(view) {
+    if (activeView === view) {
+      goToFeed();
+      return;
+    }
+
+    setActiveView(view);
+    setSelectedPostId("");
+  }
+
+  function toggleComposer() {
+    if (activeView === "feed" && composerOpen) {
+      setComposerOpen(false);
+      return;
+    }
+
+    setActiveView("feed");
+    setComposerOpen(true);
+  }
+
+  function toggleOwnProfile() {
+    if (activeView === "public-profile" && viewedProfile?.id === session.user.id) {
+      goToFeed();
+      return;
+    }
+
+    openPublicProfile(profile, session.user.id);
+  }
+
   async function loadAdminData() {
     const { data, error } = await supabase
       .from("profiles")
@@ -367,6 +398,14 @@ export default function HomePage() {
       .order("created_at", { ascending: false });
 
     if (!error) setAdminProfiles(data || []);
+
+    const { data: postData, error: postError } = await supabase
+      .from("posts")
+      .select("*, author:profiles!posts_user_id_fkey(id, name, email, contact, avatar_url, neighborhood, bio, role, badge_title), comments(*, commenter:profiles!comments_user_id_fkey(id, name, email, contact, avatar_url, neighborhood, bio, role, badge_title)), likes(user_id)")
+      .order("created_at", { ascending: false })
+      .limit(1000);
+
+    if (!postError) setAdminPosts(postData || []);
 
     const { data: reportData, error: reportError } = await supabase
       .from("reports")
@@ -820,12 +859,11 @@ export default function HomePage() {
     (total, post) => total + (post.comments || []).filter((comment) => comment.user_id === session?.user?.id).length,
     0
   );
-  const totalLikes = posts.reduce((total, post) => total + (post.likes?.length || 0), 0);
-  const totalComments = posts.reduce((total, post) => total + (post.comments?.length || 0), 0);
   const unreadNotifications = notifications.filter((item) => !item.read_at).length;
+  const analyticsPosts = isAdmin && adminPosts.length ? adminPosts : posts;
   const communityProfiles = adminProfiles.length
     ? adminProfiles
-    : Object.values(posts.reduce((items, post) => {
+    : Object.values(analyticsPosts.reduce((items, post) => {
       if (post.author?.id) items[post.author.id] = { ...post.author, id: post.author.id };
       (post.comments || []).forEach((comment) => {
         if (comment.commenter?.id) items[comment.commenter.id] = { ...comment.commenter, id: comment.commenter.id };
@@ -834,8 +872,8 @@ export default function HomePage() {
     }, {}));
   const ranking = communityProfiles
     .map((person) => {
-      const personPosts = posts.filter((post) => post.user_id === person.id);
-      const comments = posts.reduce((total, post) => total + (post.comments || []).filter((comment) => comment.user_id === person.id).length, 0);
+      const personPosts = analyticsPosts.filter((post) => post.user_id === person.id);
+      const comments = analyticsPosts.reduce((total, post) => total + (post.comments || []).filter((comment) => comment.user_id === person.id).length, 0);
       const receivedLikes = personPosts.reduce((total, post) => total + (post.likes?.length || 0), 0);
       return { ...person, score: personPosts.length * 4 + comments * 2 + receivedLikes, posts: personPosts.length, comments, receivedLikes };
     })
@@ -843,14 +881,14 @@ export default function HomePage() {
     .slice(0, 8);
   const categoryCounts = postCategories.map((category) => ({
     ...category,
-    count: posts.filter((post) => (post.category || "problema") === category.value).length,
+    count: analyticsPosts.filter((post) => (post.category || "problema") === category.value).length,
   }));
   const statusCounts = issueStatuses.map((status) => ({
     ...status,
-    count: posts.filter((post) => (post.issue_status || "aberto") === status.value).length,
+    count: analyticsPosts.filter((post) => (post.issue_status || "aberto") === status.value).length,
   }));
   const regionCounts = Object.values(
-    posts.reduce((items, post) => {
+    analyticsPosts.reduce((items, post) => {
       const region = post.neighborhood || "Região não informada";
       if (!items[region]) items[region] = { region, count: 0, urgent: 0, open: 0 };
       items[region].count += 1;
@@ -865,9 +903,9 @@ export default function HomePage() {
   const adminMetrics = [
     { label: "Cadastros", value: adminProfiles.length },
     { label: "Usuários Brasília", value: brasiliaUsers || adminProfiles.length },
-    { label: "Publicações", value: posts.length },
-    { label: "Comentários", value: totalComments },
-    { label: "Curtidas", value: totalLikes },
+    { label: "Publicações", value: analyticsPosts.length },
+    { label: "Comentários", value: analyticsPosts.reduce((total, post) => total + (post.comments?.length || 0), 0) },
+    { label: "Curtidas", value: analyticsPosts.reduce((total, post) => total + (post.likes?.length || 0), 0) },
     { label: "Relatórios", value: adminReports.length },
     { label: "Debates ativos", value: activeDebates.length },
   ];
@@ -923,20 +961,17 @@ export default function HomePage() {
 
         <nav className="side-nav" aria-label="Navegação principal">
           <button className={activeView === "feed" ? "side-nav-item active" : "side-nav-item"} onClick={goToFeed} type="button"><FeedIcon /><span>Feed</span></button>
-          <button className={activeView === "debates" ? "side-nav-item active" : "side-nav-item"} onClick={() => setActiveView("debates")} type="button"><DebateIcon /><span>Debates</span></button>
-          <button className={activeView === "ranking" ? "side-nav-item active" : "side-nav-item"} onClick={() => setActiveView("ranking")} type="button"><RankingIcon /><span>Ranking</span></button>
+          <button className={activeView === "debates" ? "side-nav-item active" : "side-nav-item"} onClick={() => toggleView("debates")} type="button"><DebateIcon /><span>Debates</span></button>
+          <button className={activeView === "ranking" ? "side-nav-item active" : "side-nav-item"} onClick={() => toggleView("ranking")} type="button"><RankingIcon /><span>Ranking</span></button>
           <button
             aria-label="Nova publicação"
             className="mobile-compose-nav"
-            onClick={() => {
-              setActiveView("feed");
-              setComposerOpen(true);
-            }}
+            onClick={toggleComposer}
             type="button"
           >
             <PlusIcon />
           </button>
-          <button className={activeView === "categories" ? "side-nav-item active" : "side-nav-item"} onClick={() => setActiveView("categories")} type="button"><CategoryIcon /><span>Categorias</span></button>
+          <button className={activeView === "categories" ? "side-nav-item active" : "side-nav-item"} onClick={() => toggleView("categories")} type="button"><CategoryIcon /><span>Categorias</span></button>
           <div className="alerts-block mobile-nav-alerts">
             <button
               className={showAlerts ? "alerts-button active" : "alerts-button"}
@@ -952,13 +987,13 @@ export default function HomePage() {
             </button>
             {showAlerts && <NotificationsPanel notifications={notifications} />}
           </div>
-          <button className="mobile-profile-nav" onClick={() => openPublicProfile(profile, session.user.id)} title="Meu perfil" type="button">
+          <button className="mobile-profile-nav" onClick={toggleOwnProfile} title="Meu perfil" type="button">
             <Avatar profile={profile} />
           </button>
-          <button className={activeView === "about" ? "side-nav-item active" : "side-nav-item"} onClick={() => setActiveView("about")} type="button"><InfoIcon /><span>Sobre</span></button>
-          <button className={activeView === "terms" ? "side-nav-item active" : "side-nav-item"} onClick={() => setActiveView("terms")} type="button"><TermsIcon /><span>Termos</span></button>
+          <button className={activeView === "about" ? "side-nav-item active" : "side-nav-item"} onClick={() => toggleView("about")} type="button"><InfoIcon /><span>Sobre</span></button>
+          <button className={activeView === "terms" ? "side-nav-item active" : "side-nav-item"} onClick={() => toggleView("terms")} type="button"><TermsIcon /><span>Termos</span></button>
           {isAdmin && (
-            <button className={activeView === "admin" ? "side-nav-item active" : "side-nav-item"} onClick={() => setActiveView("admin")} type="button"><AdminIcon /><span>Admin</span></button>
+            <button className={activeView === "admin" ? "side-nav-item active" : "side-nav-item"} onClick={() => toggleView("admin")} type="button"><AdminIcon /><span>Admin</span></button>
           )}
         </nav>
 
@@ -994,7 +1029,7 @@ export default function HomePage() {
           <span><strong>{userComments}</strong> comentários</span>
         </div>
 
-        <button className="ghost-button logout-button" onClick={signOut} type="button">Sair</button>
+        <button className="logout-button" onClick={signOut} title="Sair" type="button"><LogoutIcon /></button>
       </aside>
 
       <section className="content">
@@ -1029,6 +1064,7 @@ export default function HomePage() {
             onEditProfile={() => setShowProfileSettings((open) => !open)}
             onFollow={toggleFollow}
             onBack={() => setActiveView("feed")}
+            onSignOut={signOut}
             onUpdateProfile={updateProfile}
             postsAll={posts}
             posts={posts.filter((post) => post.user_id === viewedProfile.id)}
@@ -1087,6 +1123,7 @@ export default function HomePage() {
             onChangeTab={setAdminTab}
             metrics={adminMetrics}
             profiles={adminProfiles}
+            adminPosts={adminPosts}
             debates={activeDebates}
             ranking={ranking}
             regionCounts={regionCounts}
@@ -1520,7 +1557,6 @@ function CandidateStories() {
           <p className="eyebrow">Participação direta</p>
           <h2>Pergunte ao candidato</h2>
         </div>
-        <span>{candidatePrompts.length} modelos</span>
       </div>
 
       <div className="candidate-story-row">
@@ -1618,7 +1654,7 @@ function CategoriesView({ categoryCounts, onSelectCategory, posts }) {
   );
 }
 
-function PublicProfileView({ debates, follows, isEditingProfile, isOwnProfile, onBack, onEditProfile, onFollow, onUpdateProfile, posts, postsAll, profile, sessionUserId }) {
+function PublicProfileView({ debates, follows, isEditingProfile, isOwnProfile, onBack, onEditProfile, onFollow, onSignOut, onUpdateProfile, posts, postsAll, profile, sessionUserId }) {
   const profileLikes = posts.reduce((total, post) => total + (post.likes?.length || 0), 0);
   const profileComments = postsAll.reduce((total, post) => total + (post.comments || []).filter((comment) => comment.user_id === profile.id).length, 0);
   const score = posts.length * 4 + profileComments * 2 + profileLikes;
@@ -1644,9 +1680,12 @@ function PublicProfileView({ debates, follows, isEditingProfile, isOwnProfile, o
                 </button>
               )}
               {isOwnProfile && (
-                <button className="ghost-button profile-settings-inline" onClick={onEditProfile} type="button">
-                  {isEditingProfile ? "Fechar configurações" : "Configurações"}
-                </button>
+                <>
+                  <button className="ghost-button profile-settings-inline" onClick={onEditProfile} type="button">
+                    {isEditingProfile ? "Fechar configurações" : "Configurações"}
+                  </button>
+                  <button className="ghost-button profile-signout-inline" onClick={onSignOut} type="button"><LogoutIcon />Sair</button>
+                </>
               )}
             </div>
             <p>{profile?.bio || "Este perfil ainda não adicionou uma bio."}</p>
@@ -1765,8 +1804,9 @@ function DebatesView({ debates, isAdmin, onCreateDebate, onSelectDebate, posts }
   );
 }
 
-function AdminView({ activeTab, categoryCounts, debates, metrics, onChangeTab, onDeleteComment, onDeletePost, onDeleteProfile, onModeratePost, onRefresh, onUpdateBadge, posts, profiles, ranking, regionCounts, reports, statusCounts }) {
-  const allComments = posts.flatMap((post) =>
+function AdminView({ activeTab, adminPosts, categoryCounts, debates, metrics, onChangeTab, onDeleteComment, onDeletePost, onDeleteProfile, onModeratePost, onRefresh, onUpdateBadge, posts, profiles, ranking, regionCounts, reports, statusCounts }) {
+  const reportPosts = adminPosts?.length ? adminPosts : posts;
+  const allComments = reportPosts.flatMap((post) =>
     (post.comments || []).map((comment) => ({
       ...comment,
       postBody: post.body,
@@ -1782,53 +1822,96 @@ function AdminView({ activeTab, categoryCounts, debates, metrics, onChangeTab, o
     .map((person) => person.email)
     .filter(Boolean)
     .join(", ");
+  const problemPosts = reportPosts.filter((post) => ["problema", "denuncia", "urgente"].includes(post.category || "problema"));
+  const unresolvedProblems = problemPosts.filter((post) => (post.issue_status || "aberto") !== "resolvido");
+  const criticalProblems = problemPosts.filter((post) => post.category === "urgente" || (post.likes?.length || 0) + (post.comments?.length || 0) >= 5);
   const issueRows = Object.values(
-    reports.reduce((items, report) => {
-      const category = report.post?.category || report.post?.topic || (report.comment ? "comentário" : "geral");
-      const city = report.post?.neighborhood || report.reporter?.neighborhood || "Não informado";
+    problemPosts.reduce((items, post) => {
+      const category = categoryLabel(post.category);
+      const city = post.neighborhood || "Não informado";
       const key = `${category}__${city}`;
-      if (!items[key]) items[key] = { category, city, count: 0 };
+      if (!items[key]) items[key] = { category, city, count: 0, open: 0, urgent: 0, comments: 0, likes: 0 };
       items[key].count += 1;
+      if ((post.issue_status || "aberto") === "aberto") items[key].open += 1;
+      if (post.category === "urgente") items[key].urgent += 1;
+      items[key].comments += post.comments?.length || 0;
+      items[key].likes += post.likes?.length || 0;
       return items;
     }, {})
   ).sort((a, b) => b.count - a.count);
+  const technicalMetrics = [
+    { label: "Problemas mapeados", value: problemPosts.length },
+    { label: "Não resolvidos", value: unresolvedProblems.length },
+    { label: "Críticos", value: criticalProblems.length },
+    { label: "Cidades/regiões", value: regionCounts.length },
+    { label: "Relatos formais", value: reports.length },
+    { label: "Base analisada", value: reportPosts.length },
+  ];
 
-  function downloadReport() {
+  const topProblemRegions = regionCounts.slice(0, 8);
+
+  function downloadProblemsReport() {
     const rows = [
-      ["categoria", "cidade_ou_região", "quantidade"],
-      ...issueRows.map((row) => [row.category, row.city, row.count]),
+      ["RELATORIO_TECNICO_PROBLEMAS_BRASILIA_DF"],
+      ["gerado_em", new Date().toISOString()],
+      ["base_posts_analisados", reportPosts.length],
+      ["problemas_mapeados", problemPosts.length],
+      ["nao_resolvidos", unresolvedProblems.length],
+      ["criticos", criticalProblems.length],
       [],
+      ["RESUMO_POR_CIDADE_REGIAO_E_TIPO"],
+      ["cidade_regiao", "tipo_problema", "total", "abertos", "urgentes", "comentarios", "curtidas"],
+      ...issueRows.map((row) => [row.city, row.category, row.count, row.open, row.urgent, row.comments, row.likes]),
+      [],
+      ["STATUS_OPERACIONAL"],
       ["status", "quantidade"],
       ...statusCounts.map((row) => [row.label, row.count]),
       [],
-      ["categoria_publicacao", "quantidade"],
+      ["CATEGORIAS_GERAIS"],
+      ["categoria", "quantidade"],
       ...categoryCounts.map((row) => [row.label, row.count]),
       [],
+      ["MAPA_DE_PROBLEMAS_POR_REGIAO"],
       ["regiao", "publicacoes", "abertos", "urgentes"],
       ...regionCounts.map((row) => [row.region, row.count, row.open, row.urgent]),
       [],
-      ["ranking_nome", "pontuacao", "posts", "comentarios", "curtidas_recebidas"],
-      ...ranking.map((person) => [person.name || "", person.score, person.posts, person.comments, person.receivedLikes]),
-      [],
-      ["nome", "email", "contato", "bairro", "perfil"],
-      ...profiles.map((person) => [person.name || "", person.email || "", person.contact || "", person.neighborhood || "", person.role || "member"]),
+      ["DETALHAMENTO_TECNICO_DOS_PROBLEMAS"],
+      ["id", "data", "autor", "email_autor", "cidade_regiao", "rua", "tipo", "status", "debate", "curtidas", "comentarios", "descricao", "resposta_admin"],
+      ...problemPosts.map((post) => [
+        post.id,
+        post.created_at || "",
+        post.author?.name || "Morador",
+        post.author?.email || "",
+        post.neighborhood || "Não informado",
+        post.street || "Não informado",
+        categoryLabel(post.category),
+        statusLabel(post.issue_status),
+        post.topic || "",
+        post.likes?.length || 0,
+        post.comments?.length || 0,
+        post.body || "",
+        post.admin_response || "",
+      ]),
     ];
-    const csv = rows.map((row) => row.map(escapeCsv).join(",")).join("\n");
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `nodus-relatorio-${new Date().toISOString().slice(0, 10)}.csv`;
-    link.click();
-    URL.revokeObjectURL(url);
+    downloadCsv(rows, `nodus-problemas-brasilia-${new Date().toISOString().slice(0, 10)}.csv`);
   }
 
+  function downloadLeadsCsv() {
+    const rows = [
+      ["nome", "email", "contato", "bairro_regiao", "perfil", "insignia", "criado_em"],
+      ...profiles.map((person) => [person.name || "", person.email || "", person.contact || "", person.neighborhood || "", person.role || "member", person.badge_title || "", person.created_at || ""]),
+    ];
+    downloadCsv(rows, `nodus-leads-${new Date().toISOString().slice(0, 10)}.csv`);
+  }
   return (
     <section className="view-panel">
       <header className="view-header">
         <p className="eyebrow">Administrador geral</p>
         <h1>Dashboard de controle</h1>
-        <button className="ghost-button report-download" onClick={downloadReport} type="button">Baixar relatório</button>
+        <div className="admin-report-actions">
+          <button className="ghost-button report-download" onClick={downloadProblemsReport} type="button">Relatório técnico DF</button>
+          <button className="ghost-button report-download" onClick={downloadLeadsCsv} type="button">CSV leads</button>
+        </div>
       </header>
 
       <div className="admin-tabs">
@@ -1840,6 +1923,21 @@ function AdminView({ activeTab, categoryCounts, debates, metrics, onChangeTab, o
 
       {activeTab === "overview" && (
         <>
+          <section className="admin-table dashboard-summary">
+            <div className="panel-title">
+              <h2>Relatório técnico de problemas - Brasília/DF</h2>
+              <small>Base operacional completa para priorização, atendimento e resposta pública.</small>
+            </div>
+            <div className="metrics-grid technical-metrics">
+              {technicalMetrics.map((metric) => (
+                <article className="metric-card" key={metric.label}>
+                  <span>{metric.label}</span>
+                  <strong>{metric.value}</strong>
+                </article>
+              ))}
+            </div>
+          </section>
+
       <div className="metrics-grid">
         {metrics.map((metric) => (
           <article className="metric-card" key={metric.label}>
@@ -1851,7 +1949,7 @@ function AdminView({ activeTab, categoryCounts, debates, metrics, onChangeTab, o
 
       <section className="admin-table">
         <div className="panel-title">
-              <h2>Regioes de Brasilia</h2>
+              <h2>Regiões de Brasília</h2>
               <small>Quantidade de usuários por bairro/região</small>
         </div>
             <div className="topic-list">
@@ -1882,14 +1980,46 @@ function AdminView({ activeTab, categoryCounts, debates, metrics, onChangeTab, o
           <section className="admin-table">
             <div className="panel-title">
               <h2>Problemas por categoria e cidade</h2>
-              <small>{reports.length} relatos recebidos</small>
+              <small>{problemPosts.length} problemas mapeados na base analisada</small>
             </div>
-            <div className="topic-list">
-              {issueRows.length === 0 && <div className="topic-item read-only"><span>Nenhum problema relatado</span><strong>0</strong></div>}
+            <div className="issue-grid">
+              {issueRows.length === 0 && <div className="issue-card"><strong>Nenhum problema relatado</strong><span>0 registros</span></div>}
               {issueRows.map((row) => (
-                <div className="topic-item read-only" key={`${row.category}-${row.city}`}>
-                  <span>{row.category} / {row.city}</span>
-                  <strong>{row.count}</strong>
+                <div className="issue-card" key={`${row.category}-${row.city}`}>
+                  <div>
+                    <strong>{row.city}</strong>
+                    <span>{row.category}</span>
+                  </div>
+                  <dl>
+                    <div><dt>Total</dt><dd>{row.count}</dd></div>
+                    <div><dt>Abertos</dt><dd>{row.open}</dd></div>
+                    <div><dt>Urgentes</dt><dd>{row.urgent}</dd></div>
+                    <div><dt>Comentários</dt><dd>{row.comments}</dd></div>
+                    <div><dt>Curtidas</dt><dd>{row.likes}</dd></div>
+                  </dl>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="admin-table">
+            <div className="panel-title">
+              <h2>Mapa de concentração de problemas</h2>
+              <small>Regiões com mais registros e demanda aberta.</small>
+            </div>
+            <div className="issue-grid">
+              {topProblemRegions.length === 0 && <div className="issue-card"><strong>Nenhuma região mapeada</strong><span>0 registros</span></div>}
+              {topProblemRegions.map((region) => (
+                <div className="issue-card" key={region.region}>
+                  <div>
+                    <strong>{region.region}</strong>
+                    <span>{region.count} publicações</span>
+                  </div>
+                  <dl>
+                    <div><dt>Abertos</dt><dd>{region.open}</dd></div>
+                    <div><dt>Urgentes</dt><dd>{region.urgent}</dd></div>
+                    <div><dt>Resolvidos</dt><dd>{Math.max(region.count - region.open, 0)}</dd></div>
+                  </dl>
                 </div>
               ))}
             </div>
@@ -1931,7 +2061,10 @@ function AdminView({ activeTab, categoryCounts, debates, metrics, onChangeTab, o
         <section className="admin-table">
           <div className="panel-title">
             <h2>Pessoas, cadastros, emails e contatos</h2>
-            <button className="ghost-button" onClick={onRefresh} type="button">Atualizar</button>
+            <div className="admin-report-actions compact-actions">
+              <button className="ghost-button" onClick={downloadLeadsCsv} type="button">Baixar CSV leads</button>
+              <button className="ghost-button" onClick={onRefresh} type="button">Atualizar</button>
+            </div>
           </div>
           <textarea className="lead-box" readOnly value={leadEmails} />
           <small>Use essa lista somente com pessoas que autorizaram contato. Para disparo em massa, respeite consentimento e LGPD.</small>
@@ -1982,7 +2115,7 @@ function AdminView({ activeTab, categoryCounts, debates, metrics, onChangeTab, o
           <section className="admin-table">
             <div className="panel-title">
               <h2>Posts publicados</h2>
-              <small>{posts.length} posts</small>
+              <small>{reportPosts.length} posts</small>
             </div>
             <div className="table-scroll">
               <table>
@@ -1999,7 +2132,7 @@ function AdminView({ activeTab, categoryCounts, debates, metrics, onChangeTab, o
                   </tr>
                 </thead>
                 <tbody>
-                  {posts.map((post) => (
+                  {reportPosts.map((post) => (
                     <tr key={post.id}>
                       <td>{post.author?.name || "Morador"}</td>
                       <td>{post.street || "-"} {post.neighborhood ? `- ${post.neighborhood}` : ""}</td>
@@ -2161,6 +2294,10 @@ function AdminIcon() {
   return <NavSvg><path d="M12 3l7 3v5c0 4.5-2.8 7.8-7 10-4.2-2.2-7-5.5-7-10V6l7-3z" /></NavSvg>;
 }
 
+function LogoutIcon() {
+  return <NavSvg><path d="M10 17l5-5-5-5M15 12H3M21 3v18h-8" /></NavSvg>;
+}
+
 function PaperclipIcon() {
   return (
     <svg aria-hidden="true" className="ui-icon" viewBox="0 0 24 24">
@@ -2204,6 +2341,17 @@ function FlagIcon() {
 function escapeCsv(value) {
   const text = String(value ?? "");
   return `"${text.replace(/"/g, '""')}"`;
+}
+
+function downloadCsv(rows, filename) {
+  const csv = rows.map((row) => row.map(escapeCsv).join(",")).join("\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
 }
 
 function categoryLabel(value) {
