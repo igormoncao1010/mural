@@ -27,10 +27,28 @@ const issueStatuses = [
   { value: "resolvido", label: "Resolvido" },
 ];
 
+const candidatePrompts = [
+  { name: "Ana Martins", role: "Educação", image: "https://randomuser.me/api/portraits/women/68.jpg" },
+  { name: "Carlos Rocha", role: "Infraestrutura", image: "https://randomuser.me/api/portraits/men/32.jpg" },
+  { name: "Marina Alves", role: "Saúde", image: "https://randomuser.me/api/portraits/women/44.jpg" },
+  { name: "Rafael Lima", role: "Mobilidade", image: "https://randomuser.me/api/portraits/men/46.jpg" },
+  { name: "Bianca Torres", role: "Segurança", image: "https://randomuser.me/api/portraits/women/12.jpg" },
+  { name: "Henrique Nunes", role: "Juventude", image: "https://randomuser.me/api/portraits/men/22.jpg" },
+  { name: "Paula Ribeiro", role: "Cultura", image: "https://randomuser.me/api/portraits/women/28.jpg" },
+  { name: "Leandro Costa", role: "Trabalho", image: "https://randomuser.me/api/portraits/men/55.jpg" },
+  { name: "Sofia Campos", role: "Meio ambiente", image: "https://randomuser.me/api/portraits/women/75.jpg" },
+  { name: "Diego Freitas", role: "Comunidade", image: "https://randomuser.me/api/portraits/men/71.jpg" },
+];
+
+const FEED_PAGE_SIZE = 10;
+
 export default function HomePage() {
   const [session, setSession] = useState(null);
   const [profile, setProfile] = useState(null);
   const [posts, setPosts] = useState([]);
+  const [feedPage, setFeedPage] = useState(0);
+  const [hasMorePosts, setHasMorePosts] = useState(true);
+  const [loadingMorePosts, setLoadingMorePosts] = useState(false);
   const [debates, setDebates] = useState(defaultDebates);
   const [adminProfiles, setAdminProfiles] = useState([]);
   const [adminReports, setAdminReports] = useState([]);
@@ -228,18 +246,38 @@ export default function HomePage() {
     }
   }
 
-  async function loadPosts() {
+  async function loadPosts({ page = 0, append = false } = {}) {
+    if (append) setLoadingMorePosts(true);
+
+    const from = page * FEED_PAGE_SIZE;
+    const to = from + FEED_PAGE_SIZE - 1;
     const { data, error } = await supabase
       .from("posts")
       .select("*, author:profiles!posts_user_id_fkey(id, name, avatar_url, neighborhood, bio, role, badge_title), comments(*, commenter:profiles!comments_user_id_fkey(id, name, avatar_url, neighborhood, bio, role, badge_title)), likes(user_id)")
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .range(from, to);
 
     if (error) {
       setMessage(error.message);
+      if (append) setLoadingMorePosts(false);
       return;
     }
 
-    setPosts(data || []);
+    const nextPosts = data || [];
+    setFeedPage(page);
+    setHasMorePosts(nextPosts.length === FEED_PAGE_SIZE);
+    setPosts((currentPosts) => {
+      if (!append) return nextPosts;
+
+      const existingIds = new Set(currentPosts.map((post) => post.id));
+      return [...currentPosts, ...nextPosts.filter((post) => !existingIds.has(post.id))];
+    });
+    if (append) setLoadingMorePosts(false);
+  }
+
+  async function loadMorePosts() {
+    if (loadingMorePosts || !hasMorePosts) return;
+    await loadPosts({ page: feedPage + 1, append: true });
   }
 
   async function loadNotifications() {
@@ -1083,6 +1121,8 @@ export default function HomePage() {
                 </div>
               </header>
 
+              <CandidateStories />
+
               <section className={composerOpen ? "composer open" : "composer compact"}>
                 {composerOpen ? (
                   <>
@@ -1266,6 +1306,11 @@ export default function HomePage() {
                     </article>
                   );
                 })}
+                {hasMorePosts && (
+                  <button className="load-more-button" disabled={loadingMorePosts} onClick={loadMorePosts} type="button">
+                    {loadingMorePosts ? "Carregando..." : "Carregar mais posts"}
+                  </button>
+                )}
               </section>
             </section>
 
@@ -1463,6 +1508,33 @@ function NotificationsPanel({ notifications }) {
           ))}
         </div>
       )}
+    </section>
+  );
+}
+
+function CandidateStories() {
+  return (
+    <section className="candidate-stories" aria-label="Pergunte ao candidato">
+      <div className="section-heading compact-heading">
+        <div>
+          <p className="eyebrow">Participação direta</p>
+          <h2>Pergunte ao candidato</h2>
+        </div>
+        <span>{candidatePrompts.length} modelos</span>
+      </div>
+
+      <div className="candidate-story-row">
+        {candidatePrompts.map((candidate) => (
+          <button className="candidate-story-card" key={candidate.name} type="button">
+            <img alt={`Foto modelo de ${candidate.name}`} src={candidate.image} />
+            <span className="candidate-story-ring" />
+            <div>
+              <strong>{candidate.name}</strong>
+              <small>{candidate.role}</small>
+            </div>
+          </button>
+        ))}
+      </div>
     </section>
   );
 }
