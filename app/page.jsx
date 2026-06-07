@@ -886,6 +886,17 @@ export default function HomePage() {
         <nav className="side-nav" aria-label="Navegação principal">
           <button className={activeView === "feed" ? "side-nav-item active" : "side-nav-item"} onClick={goToFeed} type="button"><FeedIcon /><span>Feed</span></button>
           <button className={activeView === "debates" ? "side-nav-item active" : "side-nav-item"} onClick={() => setActiveView("debates")} type="button"><DebateIcon /><span>Debates</span></button>
+          <button
+            aria-label="Nova publicação"
+            className="mobile-compose-nav"
+            onClick={() => {
+              setActiveView("feed");
+              setComposerOpen(true);
+            }}
+            type="button"
+          >
+            <PlusIcon />
+          </button>
           <button className={activeView === "ranking" ? "side-nav-item active" : "side-nav-item"} onClick={() => setActiveView("ranking")} type="button"><RankingIcon /><span>Ranking</span></button>
           <button className={activeView === "categories" ? "side-nav-item active" : "side-nav-item"} onClick={() => setActiveView("categories")} type="button"><CategoryIcon /><span>Categorias</span></button>
           <button className={activeView === "about" ? "side-nav-item active" : "side-nav-item"} onClick={() => setActiveView("about")} type="button"><InfoIcon /><span>Sobre</span></button>
@@ -2006,6 +2017,10 @@ function DebateIcon() {
 
 function RankingIcon() {
   return <NavSvg><path d="M5 20V10h4v10M10 20V4h4v16M15 20v-7h4v7" /></NavSvg>;
+}
+
+function PlusIcon() {
+  return <NavSvg><path d="M12 5v14M5 12h14" /></NavSvg>;
 }
 
 function CategoryIcon() {
