@@ -22,16 +22,26 @@ create table if not exists public.posts (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references public.profiles(id) on delete cascade,
   topic text not null,
+  category text default 'problema',
+  issue_status text default 'aberto',
   street text default '',
   neighborhood text default '',
   body text not null,
   image_url text default '',
+  admin_response text default '',
+  status_updated_by uuid references public.profiles(id) on delete set null,
+  status_updated_at timestamptz,
   share_count integer default 0,
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );
 
 alter table public.posts add column if not exists share_count integer default 0;
+alter table public.posts add column if not exists category text default 'problema';
+alter table public.posts add column if not exists issue_status text default 'aberto';
+alter table public.posts add column if not exists admin_response text default '';
+alter table public.posts add column if not exists status_updated_by uuid references public.profiles(id) on delete set null;
+alter table public.posts add column if not exists status_updated_at timestamptz;
 
 create table if not exists public.comments (
   id uuid primary key default gen_random_uuid(),
@@ -48,16 +58,27 @@ create table if not exists public.likes (
   primary key (post_id, user_id)
 );
 
+create table if not exists public.follows (
+  follower_id uuid not null references public.profiles(id) on delete cascade,
+  following_id uuid not null references public.profiles(id) on delete cascade,
+  created_at timestamptz default now(),
+  primary key (follower_id, following_id),
+  check (follower_id <> following_id)
+);
+
 create table if not exists public.notifications (
   id uuid primary key default gen_random_uuid(),
   recipient_id uuid not null references public.profiles(id) on delete cascade,
   actor_id uuid references public.profiles(id) on delete set null,
-  type text not null check (type in ('like', 'comment')),
+  type text not null check (type in ('like', 'comment', 'status', 'admin_response')),
   post_id uuid references public.posts(id) on delete cascade,
   comment_id uuid references public.comments(id) on delete cascade,
   read_at timestamptz,
   created_at timestamptz default now()
 );
+
+alter table public.notifications drop constraint if exists notifications_type_check;
+alter table public.notifications add constraint notifications_type_check check (type in ('like', 'comment', 'status', 'admin_response'));
 
 create table if not exists public.reports (
   id uuid primary key default gen_random_uuid(),
@@ -139,6 +160,7 @@ alter table public.profiles enable row level security;
 alter table public.posts enable row level security;
 alter table public.comments enable row level security;
 alter table public.likes enable row level security;
+alter table public.follows enable row level security;
 alter table public.notifications enable row level security;
 alter table public.reports enable row level security;
 alter table public.debates enable row level security;
@@ -194,6 +216,13 @@ to authenticated
 using (auth.uid() = user_id)
 with check (auth.uid() = user_id);
 
+drop policy if exists "admins can moderate posts" on public.posts;
+create policy "admins can moderate posts"
+on public.posts for update
+to authenticated
+using (public.is_admin())
+with check (public.is_admin());
+
 drop policy if exists "users can delete their posts" on public.posts;
 create policy "users can delete their posts"
 on public.posts for delete
@@ -235,6 +264,24 @@ create policy "users can remove their likes"
 on public.likes for delete
 to authenticated
 using (auth.uid() = user_id);
+
+drop policy if exists "follows are visible to authenticated users" on public.follows;
+create policy "follows are visible to authenticated users"
+on public.follows for select
+to authenticated
+using (true);
+
+drop policy if exists "users can follow profiles" on public.follows;
+create policy "users can follow profiles"
+on public.follows for insert
+to authenticated
+with check (auth.uid() = follower_id);
+
+drop policy if exists "users can unfollow profiles" on public.follows;
+create policy "users can unfollow profiles"
+on public.follows for delete
+to authenticated
+using (auth.uid() = follower_id);
 
 drop policy if exists "users can view their notifications" on public.notifications;
 create policy "users can view their notifications"
@@ -348,6 +395,10 @@ begin
 
   if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'likes') then
     alter publication supabase_realtime add table public.likes;
+  end if;
+
+  if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'follows') then
+    alter publication supabase_realtime add table public.follows;
   end if;
 
   if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'notifications') then

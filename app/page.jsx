@@ -12,6 +12,20 @@ const defaultDebates = [
 ];
 
 const allTopic = { id: "all", slug: "all", title: "Todos", description: "Todos os debates ativos." };
+const postCategories = [
+  { value: "problema", label: "Problema" },
+  { value: "sugestao", label: "Sugestão" },
+  { value: "denuncia", label: "Denúncia" },
+  { value: "elogio", label: "Elogio" },
+  { value: "debate", label: "Debate" },
+  { value: "urgente", label: "Urgente" },
+];
+const issueStatuses = [
+  { value: "aberto", label: "Aberto" },
+  { value: "analise", label: "Em análise" },
+  { value: "encaminhado", label: "Encaminhado" },
+  { value: "resolvido", label: "Resolvido" },
+];
 
 export default function HomePage() {
   const [session, setSession] = useState(null);
@@ -21,6 +35,7 @@ export default function HomePage() {
   const [adminProfiles, setAdminProfiles] = useState([]);
   const [adminReports, setAdminReports] = useState([]);
   const [notifications, setNotifications] = useState([]);
+  const [follows, setFollows] = useState([]);
   const [showAlerts, setShowAlerts] = useState(false);
   const [authMode, setAuthMode] = useState("login");
   const [loading, setLoading] = useState(true);
@@ -32,7 +47,8 @@ export default function HomePage() {
   const [showProfileSettings, setShowProfileSettings] = useState(false);
   const [activeCommentPostId, setActiveCommentPostId] = useState(null);
   const [viewedProfile, setViewedProfile] = useState(null);
-  const [postDraft, setPostDraft] = useState({ body: "", topic: "", street: "", neighborhood: "" });
+  const [selectedPostId, setSelectedPostId] = useState("");
+  const [postDraft, setPostDraft] = useState({ body: "", topic: "", category: "problema", street: "", neighborhood: "" });
   const [postImageFile, setPostImageFile] = useState(null);
   const [postPreviewUrl, setPostPreviewUrl] = useState("");
   const [posting, setPosting] = useState(false);
@@ -72,6 +88,7 @@ export default function HomePage() {
       setProfile(null);
       setPosts([]);
       setNotifications([]);
+      setFollows([]);
       return;
     }
 
@@ -79,7 +96,18 @@ export default function HomePage() {
     loadDebates();
     loadPosts();
     loadNotifications();
+    loadFollows();
   }, [session, supabase]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const postId = params.get("post");
+    if (postId) {
+      setSelectedPostId(postId);
+      setActiveView("post-detail");
+    }
+  }, []);
 
   useEffect(() => {
     if (isAdmin) loadAdminData();
@@ -122,6 +150,9 @@ export default function HomePage() {
       .on("postgres_changes", { event: "*", schema: "public", table: "posts" }, refreshEverything)
       .on("postgres_changes", { event: "*", schema: "public", table: "comments" }, refreshEverything)
       .on("postgres_changes", { event: "*", schema: "public", table: "likes" }, refreshEverything)
+      .on("postgres_changes", { event: "*", schema: "public", table: "follows" }, async () => {
+        await loadFollows();
+      })
       .on("postgres_changes", { event: "*", schema: "public", table: "notifications", filter: `recipient_id=eq.${session.user.id}` }, async () => {
         await loadNotifications();
       })
@@ -215,6 +246,14 @@ export default function HomePage() {
     if (!error) setNotifications(data || []);
   }
 
+  async function loadFollows() {
+    const { data, error } = await supabase
+      .from("follows")
+      .select("*");
+
+    if (!error) setFollows(data || []);
+  }
+
   async function createNotification({ recipientId, type, postId, commentId }) {
     if (!recipientId || recipientId === session.user.id) return;
 
@@ -256,6 +295,27 @@ export default function HomePage() {
     }
   }
 
+  function openPost(postId) {
+    setSelectedPostId(postId);
+    setActiveView("post-detail");
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      url.searchParams.set("post", postId);
+      window.history.replaceState({}, "", url.toString());
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  }
+
+  function goToFeed() {
+    setActiveView("feed");
+    setSelectedPostId("");
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("post");
+      window.history.replaceState({}, "", url.toString());
+    }
+  }
+
   async function loadAdminData() {
     const { data, error } = await supabase
       .from("profiles")
@@ -266,7 +326,7 @@ export default function HomePage() {
 
     const { data: reportData, error: reportError } = await supabase
       .from("reports")
-      .select("id, reason, created_at, post_id, comment_id, reporter:profiles!reports_user_id_fkey(name, email, neighborhood, contact), post:posts!reports_post_id_fkey(body, street, neighborhood, topic, user_id), comment:comments!reports_comment_id_fkey(body, user_id)")
+      .select("id, reason, created_at, post_id, comment_id, reporter:profiles!reports_user_id_fkey(name, email, neighborhood, contact), post:posts!reports_post_id_fkey(body, street, neighborhood, topic, category, issue_status, user_id), comment:comments!reports_comment_id_fkey(body, user_id)")
       .order("created_at", { ascending: false });
 
     if (!reportError) setAdminReports(reportData || []);
@@ -380,6 +440,7 @@ export default function HomePage() {
     setPostDraft({
       body: "",
       topic: postDraft.topic || activeDebates[0]?.slug || "",
+      category: "problema",
       street: "",
       neighborhood: "",
     });
@@ -426,6 +487,8 @@ export default function HomePage() {
     const { error } = await supabase.from("posts").insert({
       user_id: session.user.id,
       topic,
+      category: postDraft.category || "problema",
+      issue_status: "aberto",
       street: postDraft.street.trim(),
       neighborhood: postDraft.neighborhood.trim(),
       body,
@@ -501,7 +564,9 @@ export default function HomePage() {
   }
 
   async function sharePost(post) {
-    const url = window.location.href;
+    const shareUrl = new URL(window.location.href);
+    shareUrl.searchParams.set("post", post.id);
+    const url = shareUrl.toString();
     const title = "Nodus";
     const text = `${post.body}\n${post.street || ""} ${post.neighborhood || ""}`.trim();
 
@@ -616,6 +681,53 @@ export default function HomePage() {
     await loadAdminData();
   }
 
+  async function toggleFollow(personId) {
+    if (!personId || personId === session.user.id) return;
+    const following = follows.some((item) => item.follower_id === session.user.id && item.following_id === personId);
+
+    if (following) {
+      await supabase.from("follows").delete().eq("follower_id", session.user.id).eq("following_id", personId);
+      setMessage("Você deixou de acompanhar este perfil.");
+    } else {
+      const { error } = await supabase.from("follows").insert({ follower_id: session.user.id, following_id: personId });
+      if (error) {
+        setMessage(error.message);
+        return;
+      }
+      setMessage("Agora você acompanha este perfil.");
+    }
+
+    await loadFollows();
+  }
+
+  async function updatePostModeration(event, post) {
+    event.preventDefault();
+    if (!isAdmin) return;
+
+    const form = new FormData(event.currentTarget);
+    const issueStatus = String(form.get("issue_status") || "aberto");
+    const adminResponse = String(form.get("admin_response") || "").trim();
+
+    const { error } = await supabase
+      .from("posts")
+      .update({
+        issue_status: issueStatus,
+        admin_response: adminResponse,
+        status_updated_by: session.user.id,
+        status_updated_at: new Date().toISOString(),
+      })
+      .eq("id", post.id);
+
+    if (error) {
+      setMessage(error.message);
+      return;
+    }
+
+    await createNotification({ recipientId: post.user_id, type: adminResponse ? "admin_response" : "status", postId: post.id });
+    setMessage("Status e resposta oficial atualizados.");
+    await loadPosts();
+  }
+
   async function updateUserBadge(event, person) {
     event.preventDefault();
     if (!isAdmin) return;
@@ -652,11 +764,12 @@ export default function HomePage() {
   }
 
   const filteredPosts = posts.filter((post) => {
-    const text = `${post.body} ${post.street} ${post.neighborhood} ${post.topic}`.toLowerCase();
+    const text = `${post.body} ${post.street} ${post.neighborhood} ${post.topic} ${post.category} ${post.issue_status} ${post.author?.name || ""}`.toLowerCase();
     const matchesFilter = filter === "all" || post.topic === filter;
     const matchesSearch = !query || text.includes(query.toLowerCase());
     return matchesFilter && matchesSearch;
   });
+  const selectedPost = posts.find((post) => post.id === selectedPostId);
   const userPosts = posts.filter((post) => post.user_id === session?.user?.id).length;
   const userComments = posts.reduce(
     (total, post) => total + (post.comments || []).filter((comment) => comment.user_id === session?.user?.id).length,
@@ -665,6 +778,42 @@ export default function HomePage() {
   const totalLikes = posts.reduce((total, post) => total + (post.likes?.length || 0), 0);
   const totalComments = posts.reduce((total, post) => total + (post.comments?.length || 0), 0);
   const unreadNotifications = notifications.filter((item) => !item.read_at).length;
+  const communityProfiles = adminProfiles.length
+    ? adminProfiles
+    : Object.values(posts.reduce((items, post) => {
+      if (post.author?.id) items[post.author.id] = { ...post.author, id: post.author.id };
+      (post.comments || []).forEach((comment) => {
+        if (comment.commenter?.id) items[comment.commenter.id] = { ...comment.commenter, id: comment.commenter.id };
+      });
+      return items;
+    }, {}));
+  const ranking = communityProfiles
+    .map((person) => {
+      const personPosts = posts.filter((post) => post.user_id === person.id);
+      const comments = posts.reduce((total, post) => total + (post.comments || []).filter((comment) => comment.user_id === person.id).length, 0);
+      const receivedLikes = personPosts.reduce((total, post) => total + (post.likes?.length || 0), 0);
+      return { ...person, score: personPosts.length * 4 + comments * 2 + receivedLikes, posts: personPosts.length, comments, receivedLikes };
+    })
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 8);
+  const categoryCounts = postCategories.map((category) => ({
+    ...category,
+    count: posts.filter((post) => (post.category || "problema") === category.value).length,
+  }));
+  const statusCounts = issueStatuses.map((status) => ({
+    ...status,
+    count: posts.filter((post) => (post.issue_status || "aberto") === status.value).length,
+  }));
+  const regionCounts = Object.values(
+    posts.reduce((items, post) => {
+      const region = post.neighborhood || "Região não informada";
+      if (!items[region]) items[region] = { region, count: 0, urgent: 0, open: 0 };
+      items[region].count += 1;
+      if (post.category === "urgente") items[region].urgent += 1;
+      if ((post.issue_status || "aberto") === "aberto") items[region].open += 1;
+      return items;
+    }, {})
+  ).sort((a, b) => b.count - a.count);
   const topicCounts = activeDebates.map((topic) => ({
     ...topic,
     count: posts.filter((post) => post.topic === topic.slug).length,
@@ -732,8 +881,10 @@ export default function HomePage() {
         </div>
 
         <nav className="side-nav" aria-label="Navegação principal">
-          <button className={activeView === "feed" ? "side-nav-item active" : "side-nav-item"} onClick={() => setActiveView("feed")} type="button">Feed</button>
+          <button className={activeView === "feed" ? "side-nav-item active" : "side-nav-item"} onClick={goToFeed} type="button">Feed</button>
           <button className={activeView === "debates" ? "side-nav-item active" : "side-nav-item"} onClick={() => setActiveView("debates")} type="button">Debates</button>
+          <button className={activeView === "about" ? "side-nav-item active" : "side-nav-item"} onClick={() => setActiveView("about")} type="button">Sobre</button>
+          <button className={activeView === "terms" ? "side-nav-item active" : "side-nav-item"} onClick={() => setActiveView("terms")} type="button">Termos</button>
           {isAdmin && (
             <button className={activeView === "admin" ? "side-nav-item active" : "side-nav-item"} onClick={() => setActiveView("admin")} type="button">Admin</button>
           )}
@@ -800,10 +951,36 @@ export default function HomePage() {
         {activeView === "public-profile" && viewedProfile ? (
           <PublicProfileView
             debates={activeDebates}
+            follows={follows}
+            onFollow={toggleFollow}
             onBack={() => setActiveView("feed")}
+            postsAll={posts}
             posts={posts.filter((post) => post.user_id === viewedProfile.id)}
             profile={viewedProfile}
+            sessionUserId={session.user.id}
           />
+        ) : activeView === "post-detail" ? (
+          <PostDetailView
+            debates={activeDebates}
+            isAdmin={isAdmin}
+            onBack={goToFeed}
+            onComment={addComment}
+            onDeleteComment={deleteComment}
+            onDeletePost={deletePost}
+            onLike={toggleLike}
+            onModerate={updatePostModeration}
+            onOpenProfile={openPublicProfile}
+            onReport={reportContent}
+            onShare={sharePost}
+            post={selectedPost}
+            commentDrafts={commentDrafts}
+            setCommentDrafts={setCommentDrafts}
+            sessionUserId={session.user.id}
+          />
+        ) : activeView === "about" ? (
+          <AboutView />
+        ) : activeView === "terms" ? (
+          <TermsView />
         ) : activeView === "debates" ? (
           <DebatesView
             debates={activeDebates}
@@ -818,15 +995,20 @@ export default function HomePage() {
         ) : activeView === "admin" && isAdmin ? (
           <AdminView
             activeTab={adminTab}
+            categoryCounts={categoryCounts}
             onChangeTab={setAdminTab}
             metrics={adminMetrics}
             profiles={adminProfiles}
             debates={activeDebates}
+            ranking={ranking}
+            regionCounts={regionCounts}
             posts={posts}
             reports={adminReports}
+            statusCounts={statusCounts}
             onDeleteComment={deleteComment}
             onDeletePost={deletePost}
             onDeleteProfile={deleteProfile}
+            onModeratePost={updatePostModeration}
             onRefresh={loadAdminData}
             onUpdateBadge={updateUserBadge}
           />
@@ -873,6 +1055,11 @@ export default function HomePage() {
                         <option key={topic.slug} value={topic.slug}>{topic.title}</option>
                       ))}
                     </select>
+                    <select disabled={posting} name="category" onChange={(event) => updatePostDraft("category", event.target.value)} value={postDraft.category}>
+                      {postCategories.map((category) => (
+                        <option key={category.value} value={category.value}>{category.label}</option>
+                      ))}
+                    </select>
                     <input disabled={posting} name="street" onChange={(event) => updatePostDraft("street", event.target.value)} placeholder="Rua / avenida" value={postDraft.street} />
                     <input disabled={posting} name="neighborhood" onChange={(event) => updatePostDraft("neighborhood", event.target.value)} placeholder="Bairro" value={postDraft.neighborhood} />
                   </div>
@@ -888,7 +1075,7 @@ export default function HomePage() {
                           <strong>{profile?.name || "Morador"}</strong>
                           <small>{postDraft.street || "Rua não informada"} {postDraft.neighborhood ? `- ${postDraft.neighborhood}` : ""}</small>
                         </div>
-                        <span>{topicLabel(postDraft.topic, activeDebates)}</span>
+                        <span>{categoryLabel(postDraft.category)} / {topicLabel(postDraft.topic, activeDebates)}</span>
                       </div>
                       {postDraft.body && <p>{postDraft.body}</p>}
                       {postPreviewUrl && <img alt="Preview da foto escolhida" src={postPreviewUrl} />}
@@ -943,8 +1130,20 @@ export default function HomePage() {
                         )}
                       </div>
 
+                      <div className="post-meta-row">
+                        <span>{categoryLabel(post.category)}</span>
+                        <span>{statusLabel(post.issue_status)}</span>
+                        <button onClick={() => openPost(post.id)} type="button">Abrir publicação</button>
+                      </div>
+
                       <p className="post-text">{post.body}</p>
                       {post.image_url && <img alt="Foto publicada no Nodus" className="post-image" src={post.image_url} />}
+                      {post.admin_response && (
+                        <div className="official-response">
+                          <strong>Resposta oficial</strong>
+                          <p>{post.admin_response}</p>
+                        </div>
+                      )}
 
                       <div className="post-actions">
                         <button className={liked ? "action-button liked" : "action-button"} onClick={() => toggleLike(post)} title={liked ? "Curtido" : "Curtir"} type="button">
@@ -1040,11 +1239,177 @@ export default function HomePage() {
                   ))}
                 </div>
               </section>
+
+              <section className="topic-panel">
+                <h2>Mapa de problemas</h2>
+                <div className="topic-list">
+                  {regionCounts.slice(0, 6).map((region) => (
+                    <div className="topic-item read-only" key={region.region}>
+                      <span>{region.region}</span>
+                      <strong>{region.open} abertos</strong>
+                    </div>
+                  ))}
+                  {regionCounts.length === 0 && <div className="topic-item read-only"><span>Nenhuma região ainda</span><strong>0</strong></div>}
+                </div>
+              </section>
+
+              <section className="topic-panel">
+                <h2>Ranking</h2>
+                <div className="topic-list">
+                  {ranking.slice(0, 5).map((person) => (
+                    <button className="topic-item" key={person.id} onClick={() => openPublicProfile(person, person.id)} type="button">
+                      <span>{person.name || "Morador"}</span>
+                      <strong>{person.score}</strong>
+                    </button>
+                  ))}
+                </div>
+              </section>
+
+              <section className="topic-panel">
+                <h2>Status</h2>
+                <div className="topic-list">
+                  {statusCounts.map((status) => (
+                    <div className="topic-item read-only" key={status.value}>
+                      <span>{status.label}</span>
+                      <strong>{status.count}</strong>
+                    </div>
+                  ))}
+                </div>
+              </section>
+
+              <section className="topic-panel">
+                <h2>Categorias</h2>
+                <div className="topic-list">
+                  {categoryCounts.map((category) => (
+                    <div className="topic-item read-only" key={category.value}>
+                      <span>{category.label}</span>
+                      <strong>{category.count}</strong>
+                    </div>
+                  ))}
+                </div>
+              </section>
             </aside>
           </div>
         )}
       </section>
     </main>
+  );
+}
+
+function PostDetailView({ commentDrafts, debates, isAdmin, onBack, onComment, onDeleteComment, onDeletePost, onLike, onModerate, onOpenProfile, onReport, onShare, post, sessionUserId, setCommentDrafts }) {
+  if (!post) {
+    return (
+      <section className="view-panel">
+        <button className="ghost-button profile-back-button" onClick={onBack} type="button">Voltar ao feed</button>
+        <article className="empty-feed">
+          <strong>Publicação não encontrada.</strong>
+          <span>Ela pode ter sido removida ou ainda não carregou.</span>
+        </article>
+      </section>
+    );
+  }
+
+  const liked = post.likes?.some((like) => like.user_id === sessionUserId);
+  const canDelete = isAdmin || post.user_id === sessionUserId;
+
+  return (
+    <section className="view-panel post-detail-view">
+      <button className="ghost-button profile-back-button" onClick={onBack} type="button">Voltar ao feed</button>
+      <article className="post-card">
+        <div className="post-header">
+          <button className="profile-link" onClick={() => onOpenProfile(post.author, post.user_id)} type="button">
+            <Avatar profile={post.author} />
+            <div>
+              <strong>{post.author?.name || "Morador"}</strong>
+              <small>{post.street || "Rua não informada"} {post.neighborhood ? `- ${post.neighborhood}` : ""}</small>
+              <Badge profile={post.author} />
+            </div>
+          </button>
+          <span>{topicLabel(post.topic, debates)}</span>
+          {canDelete && <button className="delete-button" onClick={() => onDeletePost(post)} type="button">Excluir</button>}
+        </div>
+
+        <div className="post-meta-row">
+          <span>{categoryLabel(post.category)}</span>
+          <span>{statusLabel(post.issue_status)}</span>
+        </div>
+        <p className="post-text">{post.body}</p>
+        {post.image_url && <img alt="Foto publicada no Nodus" className="post-image" src={post.image_url} />}
+        {post.admin_response && (
+          <div className="official-response">
+            <strong>Resposta oficial</strong>
+            <p>{post.admin_response}</p>
+          </div>
+        )}
+        <div className="post-actions">
+          <button className={liked ? "action-button liked" : "action-button"} onClick={() => onLike(post)} type="button"><HeartIcon filled={liked} /><span>{post.likes?.length || 0}</span></button>
+          <button className="action-button" type="button"><CommentIcon /><span>{post.comments?.length || 0}</span></button>
+          <button className="action-button" onClick={() => onShare(post)} type="button"><ShareIcon /><span>{post.share_count || 0}</span></button>
+          <button className="action-button report-action" onClick={() => onReport({ postId: post.id })} type="button"><FlagIcon /></button>
+        </div>
+        {isAdmin && (
+          <form className="official-form" onSubmit={(event) => onModerate(event, post)}>
+            <select defaultValue={post.issue_status || "aberto"} name="issue_status">
+              {issueStatuses.map((status) => <option key={status.value} value={status.value}>{status.label}</option>)}
+            </select>
+            <textarea defaultValue={post.admin_response || ""} name="admin_response" placeholder="Resposta oficial da equipe" />
+            <button className="primary-button" type="submit">Salvar moderação</button>
+          </form>
+        )}
+        <div className="comments">
+          {(post.comments || []).map((comment) => (
+            <div className="comment" key={comment.id}>
+              <button className="comment-avatar-button" onClick={() => onOpenProfile(comment.commenter, comment.user_id)} type="button"><Avatar profile={comment.commenter} /></button>
+              <div className="comment-content">
+                <div className="comment-topline">
+                  <button className="comment-name-button" onClick={() => onOpenProfile(comment.commenter, comment.user_id)} type="button"><strong>{comment.commenter?.name || "Morador"}</strong><Badge profile={comment.commenter} /></button>
+                  <div className="comment-tools">
+                    {(isAdmin || comment.user_id === sessionUserId) && <button className="delete-button compact" onClick={() => onDeleteComment(comment)} type="button">Excluir</button>}
+                    <button className="delete-button compact neutral" onClick={() => onReport({ commentId: comment.id })} type="button">Relatar</button>
+                  </div>
+                </div>
+                <p className="comment-body">{comment.body}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+        <form className="comment-form" onSubmit={(event) => onComment(event, post.id)}>
+          <Avatar profile={{ name: "Você" }} />
+          <input name="comment" onChange={(event) => setCommentDrafts((drafts) => ({ ...drafts, [post.id]: event.target.value }))} placeholder="Escreva um comentário" value={commentDrafts[post.id] || ""} />
+          <button type="submit">Enviar</button>
+        </form>
+      </article>
+    </section>
+  );
+}
+
+function AboutView() {
+  return (
+    <section className="view-panel text-page">
+      <p className="eyebrow">Nodus</p>
+      <h1>Fluxo da Informação local.</h1>
+      <p>O Nodus organiza relatos, ideias e debates da comunidade em um feed social simples: moradores publicam fotos das ruas, categorizam problemas, acompanham status e ajudam a priorizar o que precisa de atenção.</p>
+      <div className="feature-grid">
+        <article><strong>Participação</strong><span>Posts, comentários, curtidas e debates por bairro.</span></article>
+        <article><strong>Acompanhamento</strong><span>Status como aberto, em análise, encaminhado e resolvido.</span></article>
+        <article><strong>Gestão</strong><span>Dashboard para moderação, relatórios, leads e resposta oficial.</span></article>
+      </div>
+    </section>
+  );
+}
+
+function TermsView() {
+  return (
+    <section className="view-panel text-page">
+      <p className="eyebrow">Regras</p>
+      <h1>Termos de uso e privacidade.</h1>
+      <p>Use o Nodus para publicar informações reais, respeitosas e úteis para a comunidade. Evite exposição indevida de pessoas, ataques pessoais, dados sensíveis e conteúdo ilegal.</p>
+      <div className="feature-grid">
+        <article><strong>Dados</strong><span>Nome, email, bairro, contato e publicações podem ser usados para gestão da plataforma.</span></article>
+        <article><strong>Moderação</strong><span>Administradores podem remover posts, comentários e perfis que violem as regras.</span></article>
+        <article><strong>Consentimento</strong><span>Listas de contatos devem ser usadas com autorização e respeito à LGPD.</span></article>
+      </div>
+    </section>
   );
 }
 
@@ -1064,7 +1429,7 @@ function NotificationsPanel({ notifications }) {
               <Avatar profile={item.actor} />
               <div>
                 <strong>{item.actor?.name || "Alguém"}</strong>
-                <p>{item.type === "like" ? "curtiu sua publicação." : "comentou na sua publicação."}</p>
+                <p>{notificationText(item.type)}</p>
                 <small>{item.post?.street || item.post?.body || "Publicação do feed"}</small>
               </div>
             </article>
@@ -1075,8 +1440,14 @@ function NotificationsPanel({ notifications }) {
   );
 }
 
-function PublicProfileView({ debates, onBack, posts, profile }) {
+function PublicProfileView({ debates, follows, onBack, onFollow, posts, postsAll, profile, sessionUserId }) {
   const profileLikes = posts.reduce((total, post) => total + (post.likes?.length || 0), 0);
+  const profileComments = postsAll.reduce((total, post) => total + (post.comments || []).filter((comment) => comment.user_id === profile.id).length, 0);
+  const score = posts.length * 4 + profileComments * 2 + profileLikes;
+  const followers = follows.filter((item) => item.following_id === profile.id).length;
+  const following = follows.filter((item) => item.follower_id === profile.id).length;
+  const isFollowing = follows.some((item) => item.follower_id === sessionUserId && item.following_id === profile.id);
+  const canFollow = profile.id !== sessionUserId;
 
   return (
     <section className="public-profile-view">
@@ -1091,6 +1462,12 @@ function PublicProfileView({ debates, onBack, posts, profile }) {
           </div>
           <p>{profile?.bio || "Este perfil ainda não adicionou uma bio."}</p>
           <small>{profile?.neighborhood || "Bairro não informado"}</small>
+          <strong className="reputation-label">{getReputationLabel(score)}</strong>
+          {canFollow && (
+            <button className="ghost-button follow-button" onClick={() => onFollow(profile.id)} type="button">
+              {isFollowing ? "Acompanhando" : "Acompanhar"}
+            </button>
+          )}
         </div>
         <div className="public-profile-stat">
           <strong>{posts.length}</strong>
@@ -1099,6 +1476,18 @@ function PublicProfileView({ debates, onBack, posts, profile }) {
         <div className="public-profile-stat">
           <strong>{profileLikes}</strong>
           <span>{profileLikes === 1 ? "curtida" : "curtidas"}</span>
+        </div>
+        <div className="public-profile-stat">
+          <strong>{profileComments}</strong>
+          <span>comentários</span>
+        </div>
+        <div className="public-profile-stat">
+          <strong>{followers}</strong>
+          <span>seguidores</span>
+        </div>
+        <div className="public-profile-stat">
+          <strong>{following}</strong>
+          <span>seguindo</span>
         </div>
       </section>
 
@@ -1123,8 +1512,9 @@ function PublicProfileView({ debates, onBack, posts, profile }) {
                   <div className="profile-post-placeholder">Nodus</div>
                 )}
                 <div>
-                  <strong>{topicLabel(post.topic, debates)}</strong>
+                  <strong>{categoryLabel(post.category)} / {topicLabel(post.topic, debates)}</strong>
                   <p>{post.body}</p>
+                  <small>{statusLabel(post.issue_status)}</small>
                   <small>{post.street || "Rua não informada"} {post.neighborhood ? `- ${post.neighborhood}` : ""}</small>
                 </div>
               </article>
@@ -1168,7 +1558,7 @@ function DebatesView({ debates, isAdmin, onCreateDebate, onSelectDebate, posts }
   );
 }
 
-function AdminView({ activeTab, debates, metrics, onChangeTab, onDeleteComment, onDeletePost, onDeleteProfile, onRefresh, onUpdateBadge, posts, profiles, reports }) {
+function AdminView({ activeTab, categoryCounts, debates, metrics, onChangeTab, onDeleteComment, onDeletePost, onDeleteProfile, onModeratePost, onRefresh, onUpdateBadge, posts, profiles, ranking, regionCounts, reports, statusCounts }) {
   const allComments = posts.flatMap((post) =>
     (post.comments || []).map((comment) => ({
       ...comment,
@@ -1187,7 +1577,7 @@ function AdminView({ activeTab, debates, metrics, onChangeTab, onDeleteComment, 
     .join(", ");
   const issueRows = Object.values(
     reports.reduce((items, report) => {
-      const category = report.post?.topic || (report.comment ? "comentário" : "geral");
+      const category = report.post?.category || report.post?.topic || (report.comment ? "comentário" : "geral");
       const city = report.post?.neighborhood || report.reporter?.neighborhood || "Não informado";
       const key = `${category}__${city}`;
       if (!items[key]) items[key] = { category, city, count: 0 };
@@ -1200,6 +1590,18 @@ function AdminView({ activeTab, debates, metrics, onChangeTab, onDeleteComment, 
     const rows = [
       ["categoria", "cidade_ou_região", "quantidade"],
       ...issueRows.map((row) => [row.category, row.city, row.count]),
+      [],
+      ["status", "quantidade"],
+      ...statusCounts.map((row) => [row.label, row.count]),
+      [],
+      ["categoria_publicacao", "quantidade"],
+      ...categoryCounts.map((row) => [row.label, row.count]),
+      [],
+      ["regiao", "publicacoes", "abertos", "urgentes"],
+      ...regionCounts.map((row) => [row.region, row.count, row.open, row.urgent]),
+      [],
+      ["ranking_nome", "pontuacao", "posts", "comentarios", "curtidas_recebidas"],
+      ...ranking.map((person) => [person.name || "", person.score, person.posts, person.comments, person.receivedLikes]),
       [],
       ["nome", "email", "contato", "bairro", "perfil"],
       ...profiles.map((person) => [person.name || "", person.email || "", person.contact || "", person.neighborhood || "", person.role || "member"]),
@@ -1285,6 +1687,36 @@ function AdminView({ activeTab, debates, metrics, onChangeTab, onDeleteComment, 
               ))}
             </div>
           </section>
+
+          <section className="admin-table">
+            <div className="panel-title">
+              <h2>Status dos problemas</h2>
+              <small>Acompanhamento operacional</small>
+            </div>
+            <div className="topic-list">
+              {statusCounts.map((status) => (
+                <div className="topic-item read-only" key={status.value}>
+                  <span>{status.label}</span>
+                  <strong>{status.count}</strong>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="admin-table">
+            <div className="panel-title">
+              <h2>Ranking da comunidade</h2>
+              <small>Participação por pontuação</small>
+            </div>
+            <div className="topic-list">
+              {ranking.map((person) => (
+                <div className="topic-item read-only" key={person.id}>
+                  <span>{person.name || "Morador"} · {getReputationLabel(person.score)}</span>
+                  <strong>{person.score}</strong>
+                </div>
+              ))}
+            </div>
+          </section>
         </>
       )}
 
@@ -1352,7 +1784,10 @@ function AdminView({ activeTab, debates, metrics, onChangeTab, onDeleteComment, 
                     <th>Autor</th>
                     <th>Local</th>
                     <th>Debate</th>
+                    <th>Categoria</th>
+                    <th>Status</th>
                     <th>Conteúdo</th>
+                    <th>Moderação</th>
                     <th>Ação</th>
                   </tr>
                 </thead>
@@ -1362,7 +1797,18 @@ function AdminView({ activeTab, debates, metrics, onChangeTab, onDeleteComment, 
                       <td>{post.author?.name || "Morador"}</td>
                       <td>{post.street || "-"} {post.neighborhood ? `- ${post.neighborhood}` : ""}</td>
                       <td>{post.topic}</td>
+                      <td>{categoryLabel(post.category)}</td>
+                      <td>{statusLabel(post.issue_status)}</td>
                       <td>{post.body}</td>
+                      <td>
+                        <form className="moderation-form" onSubmit={(event) => onModeratePost(event, post)}>
+                          <select defaultValue={post.issue_status || "aberto"} name="issue_status">
+                            {issueStatuses.map((status) => <option key={status.value} value={status.value}>{status.label}</option>)}
+                          </select>
+                          <textarea defaultValue={post.admin_response || ""} name="admin_response" placeholder="Resposta da equipe" />
+                          <button className="ghost-button" type="submit">Salvar</button>
+                        </form>
+                      </td>
                       <td><button className="delete-button" onClick={() => onDeletePost(post)} type="button">Excluir post</button></td>
                     </tr>
                   ))}
@@ -1511,6 +1957,29 @@ function FlagIcon() {
 function escapeCsv(value) {
   const text = String(value ?? "");
   return `"${text.replace(/"/g, '""')}"`;
+}
+
+function categoryLabel(value) {
+  return postCategories.find((category) => category.value === value)?.label || "Problema";
+}
+
+function statusLabel(value) {
+  return issueStatuses.find((status) => status.value === value)?.label || "Aberto";
+}
+
+function getReputationLabel(score) {
+  if (score >= 80) return "Voz da comunidade";
+  if (score >= 45) return "Colaborador";
+  if (score >= 24) return "Fiscal da rua";
+  if (score >= 10) return "Morador ativo";
+  return "Novo participante";
+}
+
+function notificationText(type) {
+  if (type === "like") return "curtiu sua publicação.";
+  if (type === "status") return "atualizou o status da sua publicação.";
+  if (type === "admin_response") return "enviou uma resposta oficial na sua publicação.";
+  return "comentou na sua publicação.";
 }
 
 function topicLabel(topicId, debates) {
