@@ -100,6 +100,30 @@ create table if not exists public.debates (
   updated_at timestamptz default now()
 );
 
+create table if not exists public.candidate_pages (
+  slug text primary key,
+  name text not null,
+  email text not null,
+  role text default '',
+  bio text default '',
+  image_url text default '',
+  status text default 'active',
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+create table if not exists public.candidate_questions (
+  id uuid primary key default gen_random_uuid(),
+  candidate_slug text not null references public.candidate_pages(slug) on delete cascade,
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  topic text not null,
+  question text not null,
+  answer text default '',
+  answered_at timestamptz,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
 drop trigger if exists on_auth_user_created on auth.users;
 drop function if exists public.handle_new_user();
 
@@ -164,6 +188,8 @@ alter table public.follows enable row level security;
 alter table public.notifications enable row level security;
 alter table public.reports enable row level security;
 alter table public.debates enable row level security;
+alter table public.candidate_pages enable row level security;
+alter table public.candidate_questions enable row level security;
 
 drop policy if exists "profiles are visible to authenticated users" on public.profiles;
 create policy "profiles are visible to authenticated users"
@@ -339,6 +365,60 @@ on public.debates for delete
 to authenticated
 using (public.is_admin());
 
+drop policy if exists "active candidate pages are visible" on public.candidate_pages;
+create policy "active candidate pages are visible"
+on public.candidate_pages for select
+to authenticated
+using (status = 'active' or public.is_admin());
+
+drop policy if exists "admins can manage candidate pages" on public.candidate_pages;
+create policy "admins can manage candidate pages"
+on public.candidate_pages for all
+to authenticated
+using (public.is_admin())
+with check (public.is_admin());
+
+drop policy if exists "candidate questions are visible" on public.candidate_questions;
+create policy "candidate questions are visible"
+on public.candidate_questions for select
+to authenticated
+using (true);
+
+drop policy if exists "users can ask candidate questions" on public.candidate_questions;
+create policy "users can ask candidate questions"
+on public.candidate_questions for insert
+to authenticated
+with check (auth.uid() = user_id);
+
+drop policy if exists "candidates can answer their questions" on public.candidate_questions;
+create policy "candidates can answer their questions"
+on public.candidate_questions for update
+to authenticated
+using (
+  public.is_admin()
+  or exists (
+    select 1
+    from public.candidate_pages candidate
+    where candidate.slug = public.candidate_questions.candidate_slug
+      and lower(candidate.email) = lower(auth.jwt() ->> 'email')
+  )
+)
+with check (
+  public.is_admin()
+  or exists (
+    select 1
+    from public.candidate_pages candidate
+    where candidate.slug = public.candidate_questions.candidate_slug
+      and lower(candidate.email) = lower(auth.jwt() ->> 'email')
+  )
+);
+
+drop policy if exists "users and admins can delete candidate questions" on public.candidate_questions;
+create policy "users and admins can delete candidate questions"
+on public.candidate_questions for delete
+to authenticated
+using (auth.uid() = user_id or public.is_admin());
+
 insert into public.debates (slug, title, description, status)
 values
   ('infraestrutura', 'Infraestrutura', 'Ruas, calçadas, iluminação e obras.', 'active'),
@@ -349,6 +429,106 @@ values
 on conflict (slug) do update
 set title = excluded.title,
     description = excluded.description,
+    status = excluded.status;
+
+insert into public.candidate_pages (slug, name, email, role, bio, image_url, status)
+values
+  (
+    'ana-martins',
+    'Ana Martins',
+    'anamartins@nodus.com.br',
+    'Educação',
+    'Pré-candidata focada em educação, comunidade e escuta pública.',
+    'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=900&q=85',
+    'active'
+  ),
+  (
+    'carlos-rocha',
+    'Carlos Rocha',
+    'carlosrocha@nodus.com.br',
+    'Infraestrutura',
+    'Perguntas sobre obras, ruas, iluminação e zeladoria urbana.',
+    'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=900&q=85',
+    'active'
+  ),
+  (
+    'marina-alves',
+    'Marina Alves',
+    'marinaalves@nodus.com.br',
+    'Saúde',
+    'Debate público sobre atendimento, filas e prevenção.',
+    'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=900&q=85',
+    'active'
+  ),
+  (
+    'rafael-lima',
+    'Rafael Lima',
+    'rafaellima@nodus.com.br',
+    'Mobilidade',
+    'Transporte, acessibilidade, trânsito e deslocamento.',
+    'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=900&q=85',
+    'active'
+  ),
+  (
+    'bianca-torres',
+    'Bianca Torres',
+    'biancatorres@nodus.com.br',
+    'Segurança',
+    'Iluminação, rondas, prevenção e pontos de risco.',
+    'https://images.unsplash.com/photo-1598550874175-4d0ef436c909?auto=format&fit=crop&w=900&q=85',
+    'active'
+  ),
+  (
+    'henrique-nunes',
+    'Henrique Nunes',
+    'henriquenunes@nodus.com.br',
+    'Juventude',
+    'Projetos para juventude, esporte e oportunidade.',
+    'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=900&q=85',
+    'active'
+  ),
+  (
+    'paula-ribeiro',
+    'Paula Ribeiro',
+    'paularibeiro@nodus.com.br',
+    'Cultura',
+    'Cultura, periferia, economia criativa e participação.',
+    'https://images.unsplash.com/photo-1551836022-d5d88e9218df?auto=format&fit=crop&w=900&q=85',
+    'active'
+  ),
+  (
+    'leandro-costa',
+    'Leandro Costa',
+    'leandrocosta@nodus.com.br',
+    'Trabalho',
+    'Emprego, renda, formação e empreendedorismo local.',
+    'https://images.unsplash.com/photo-1568602471122-7832951cc4c5?auto=format&fit=crop&w=900&q=85',
+    'active'
+  ),
+  (
+    'sofia-campos',
+    'Sofia Campos',
+    'sofiacampos@nodus.com.br',
+    'Meio ambiente',
+    'Sustentabilidade, parques, lixo e cuidado urbano.',
+    'https://images.unsplash.com/photo-1607746882042-944635dfe10e?auto=format&fit=crop&w=900&q=85',
+    'active'
+  ),
+  (
+    'diego-freitas',
+    'Diego Freitas',
+    'diegofreitas@nodus.com.br',
+    'Comunidade',
+    'Demandas locais, liderança comunitária e prioridades.',
+    'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=900&q=85',
+    'active'
+  )
+on conflict (slug) do update
+set name = excluded.name,
+    email = excluded.email,
+    role = excluded.role,
+    bio = excluded.bio,
+    image_url = excluded.image_url,
     status = excluded.status;
 
 insert into storage.buckets (id, name, public)
@@ -415,5 +595,9 @@ begin
 
   if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'profiles') then
     alter publication supabase_realtime add table public.profiles;
+  end if;
+
+  if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'candidate_questions') then
+    alter publication supabase_realtime add table public.candidate_questions;
   end if;
 end $$;

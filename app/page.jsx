@@ -28,19 +28,20 @@ const issueStatuses = [
 ];
 
 const candidatePrompts = [
-  { name: "Ana Martins", role: "Educação", image: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=420&q=80" },
-  { name: "Carlos Rocha", role: "Infraestrutura", image: "https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=420&q=80" },
-  { name: "Marina Alves", role: "Saúde", image: "https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=420&q=80" },
-  { name: "Rafael Lima", role: "Mobilidade", image: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=420&q=80" },
-  { name: "Bianca Torres", role: "Segurança", image: "https://images.unsplash.com/photo-1598550874175-4d0ef436c909?auto=format&fit=crop&w=420&q=80" },
-  { name: "Henrique Nunes", role: "Juventude", image: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=420&q=80" },
-  { name: "Paula Ribeiro", role: "Cultura", image: "https://images.unsplash.com/photo-1551836022-d5d88e9218df?auto=format&fit=crop&w=420&q=80" },
-  { name: "Leandro Costa", role: "Trabalho", image: "https://images.unsplash.com/photo-1568602471122-7832951cc4c5?auto=format&fit=crop&w=420&q=80" },
-  { name: "Sofia Campos", role: "Meio ambiente", image: "https://images.unsplash.com/photo-1607746882042-944635dfe10e?auto=format&fit=crop&w=420&q=80" },
-  { name: "Diego Freitas", role: "Comunidade", image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=420&q=80" },
+  { slug: "ana-martins", name: "Ana Martins", email: "anamartins@nodus.com.br", role: "Educação", bio: "Pré-candidata focada em educação, comunidade e escuta pública.", image: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=420&q=80" },
+  { slug: "carlos-rocha", name: "Carlos Rocha", email: "carlosrocha@nodus.com.br", role: "Infraestrutura", bio: "Perguntas sobre obras, ruas, iluminação e zeladoria urbana.", image: "https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=420&q=80" },
+  { slug: "marina-alves", name: "Marina Alves", email: "marinaalves@nodus.com.br", role: "Saúde", bio: "Debate público sobre atendimento, filas e prevenção.", image: "https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=420&q=80" },
+  { slug: "rafael-lima", name: "Rafael Lima", email: "rafaellima@nodus.com.br", role: "Mobilidade", bio: "Transporte, acessibilidade, trânsito e deslocamento.", image: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=420&q=80" },
+  { slug: "bianca-torres", name: "Bianca Torres", email: "biancatorres@nodus.com.br", role: "Segurança", bio: "Iluminação, rondas, prevenção e pontos de risco.", image: "https://images.unsplash.com/photo-1598550874175-4d0ef436c909?auto=format&fit=crop&w=420&q=80" },
+  { slug: "henrique-nunes", name: "Henrique Nunes", email: "henriquenunes@nodus.com.br", role: "Juventude", bio: "Projetos para juventude, esporte e oportunidade.", image: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=420&q=80" },
+  { slug: "paula-ribeiro", name: "Paula Ribeiro", email: "paularibeiro@nodus.com.br", role: "Cultura", bio: "Cultura, periferia, economia criativa e participação.", image: "https://images.unsplash.com/photo-1551836022-d5d88e9218df?auto=format&fit=crop&w=420&q=80" },
+  { slug: "leandro-costa", name: "Leandro Costa", email: "leandrocosta@nodus.com.br", role: "Trabalho", bio: "Emprego, renda, formação e empreendedorismo local.", image: "https://images.unsplash.com/photo-1568602471122-7832951cc4c5?auto=format&fit=crop&w=420&q=80" },
+  { slug: "sofia-campos", name: "Sofia Campos", email: "sofiacampos@nodus.com.br", role: "Meio ambiente", bio: "Sustentabilidade, parques, lixo e cuidado urbano.", image: "https://images.unsplash.com/photo-1607746882042-944635dfe10e?auto=format&fit=crop&w=420&q=80" },
+  { slug: "diego-freitas", name: "Diego Freitas", email: "diegofreitas@nodus.com.br", role: "Comunidade", bio: "Demandas locais, liderança comunitária e prioridades.", image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=420&q=80" },
 ];
 
 const FEED_PAGE_SIZE = 10;
+const candidateQuestionTopics = ["Educação", "Saúde", "Infraestrutura", "Segurança", "Mobilidade", "Emprego e renda", "Juventude", "Transparência", "Comunidade"];
 
 export default function HomePage() {
   const [session, setSession] = useState(null);
@@ -53,6 +54,7 @@ export default function HomePage() {
   const [adminProfiles, setAdminProfiles] = useState([]);
   const [adminReports, setAdminReports] = useState([]);
   const [adminPosts, setAdminPosts] = useState([]);
+  const [candidateQuestions, setCandidateQuestions] = useState([]);
   const [notifications, setNotifications] = useState([]);
   const [follows, setFollows] = useState([]);
   const [showAlerts, setShowAlerts] = useState(false);
@@ -68,6 +70,7 @@ export default function HomePage() {
   const [activeCommentPostId, setActiveCommentPostId] = useState(null);
   const [viewedProfile, setViewedProfile] = useState(null);
   const [selectedPostId, setSelectedPostId] = useState("");
+  const [currentCandidateSlug, setCurrentCandidateSlug] = useState("ana-martins");
   const [postDraft, setPostDraft] = useState({ body: "", topic: "", category: "problema", street: "", neighborhood: "" });
   const [postImageFile, setPostImageFile] = useState(null);
   const [postPreviewUrl, setPostPreviewUrl] = useState("");
@@ -113,6 +116,7 @@ export default function HomePage() {
       setProfile(null);
       setPosts([]);
       setAdminPosts([]);
+      setCandidateQuestions([]);
       setNotifications([]);
       setFollows([]);
       return;
@@ -121,6 +125,7 @@ export default function HomePage() {
     loadProfile();
     loadDebates();
     loadPosts();
+    loadCandidateQuestions();
     loadNotifications();
     loadFollows();
   }, [session, supabase]);
@@ -167,6 +172,7 @@ export default function HomePage() {
       refreshTimer = setTimeout(async () => {
         await loadDebates();
         await loadPosts();
+        await loadCandidateQuestions();
         if (isAdmin) await loadAdminData();
       }, 250);
     };
@@ -184,6 +190,7 @@ export default function HomePage() {
       })
       .on("postgres_changes", { event: "*", schema: "public", table: "reports" }, refreshEverything)
       .on("postgres_changes", { event: "*", schema: "public", table: "debates" }, refreshEverything)
+      .on("postgres_changes", { event: "*", schema: "public", table: "candidate_questions" }, refreshEverything)
       .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, refreshEverything)
       .subscribe();
 
@@ -246,6 +253,16 @@ export default function HomePage() {
     if (!error && data?.length) {
       setDebates(data);
     }
+  }
+
+  async function loadCandidateQuestions() {
+    const { data, error } = await supabase
+      .from("candidate_questions")
+      .select("*, author:profiles!candidate_questions_user_id_fkey(id, name, avatar_url, neighborhood, role, badge_title)")
+      .order("created_at", { ascending: false })
+      .limit(300);
+
+    if (!error) setCandidateQuestions(data || []);
   }
 
   async function loadPosts({ page = 0, append = false } = {}) {
@@ -628,6 +645,59 @@ export default function HomePage() {
     await loadDebates();
   }
 
+  function openCandidatePage(candidate) {
+    setCurrentCandidateSlug(candidate.slug);
+    setActiveView("candidate");
+    setShowProfileSettings(false);
+  }
+
+  async function askCandidateQuestion(event, candidateSlug) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    const topic = String(form.get("topic") || candidateQuestionTopics[0]).trim();
+    const question = String(form.get("question") || "").trim();
+    if (!question) return;
+
+    const { error } = await supabase.from("candidate_questions").insert({
+      candidate_slug: candidateSlug,
+      user_id: session.user.id,
+      topic,
+      question,
+    });
+
+    if (error) {
+      setMessage(error.message);
+      return;
+    }
+
+    event.currentTarget.reset();
+    setMessage("Pergunta enviada para a candidata.");
+    await loadCandidateQuestions();
+  }
+
+  async function answerCandidateQuestion(event, questionId) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    const answer = String(form.get("answer") || "").trim();
+    if (!answer) return;
+
+    const { error } = await supabase
+      .from("candidate_questions")
+      .update({
+        answer,
+        answered_at: new Date().toISOString(),
+      })
+      .eq("id", questionId);
+
+    if (error) {
+      setMessage(error.message);
+      return;
+    }
+
+    setMessage("Resposta publicada no mural da candidata.");
+    await loadCandidateQuestions();
+  }
+
   async function toggleLike(post) {
     const liked = post.likes?.some((like) => like.user_id === session.user.id);
 
@@ -900,6 +970,9 @@ export default function HomePage() {
   const brasiliaUsers = adminProfiles.filter((person) =>
     /brasilia|df|samambaia|ceilandia|taguatinga|sobradinho|guara|gama|planaltina|recanto|riacho|paranoa|nucleo|brazlandia|cruzeiro|sudoeste|octogonal|aguas claras|vicente pires/i.test(person.neighborhood || "")
   ).length;
+  const currentCandidate = candidatePrompts.find((candidate) => candidate.slug === currentCandidateSlug) || candidatePrompts[0];
+  const currentCandidateQuestions = candidateQuestions.filter((question) => question.candidate_slug === currentCandidate.slug);
+  const isCurrentCandidate = session?.user?.email?.toLowerCase() === currentCandidate.email.toLowerCase();
   const adminMetrics = [
     { label: "Cadastros", value: adminProfiles.length },
     { label: "Usuários Brasília", value: brasiliaUsers || adminProfiles.length },
@@ -1116,6 +1189,15 @@ export default function HomePage() {
             }}
             posts={posts}
           />
+        ) : activeView === "candidate" ? (
+          <CandidateQuestionView
+            candidate={currentCandidate}
+            isCandidate={isCurrentCandidate || isAdmin}
+            onAnswer={answerCandidateQuestion}
+            onAsk={askCandidateQuestion}
+            onBack={goToFeed}
+            questions={currentCandidateQuestions}
+          />
         ) : activeView === "admin" && isAdmin ? (
           <AdminView
             activeTab={adminTab}
@@ -1158,7 +1240,7 @@ export default function HomePage() {
                 </div>
               </header>
 
-              <CandidateStories />
+              <CandidateStories onOpenCandidate={openCandidatePage} />
 
               <section className={composerOpen ? "composer open" : "composer compact"}>
                 {composerOpen ? (
@@ -1549,7 +1631,7 @@ function NotificationsPanel({ notifications }) {
   );
 }
 
-function CandidateStories() {
+function CandidateStories({ onOpenCandidate }) {
   return (
     <section className="candidate-stories" aria-label="Pergunte ao candidato">
       <div className="section-heading compact-heading">
@@ -1561,7 +1643,7 @@ function CandidateStories() {
 
       <div className="candidate-story-row">
         {candidatePrompts.map((candidate) => (
-          <button className="candidate-story-card" key={candidate.name} type="button">
+          <button className="candidate-story-card" key={candidate.name} onClick={() => onOpenCandidate(candidate)} type="button">
             <img alt={`Foto modelo de ${candidate.name}`} src={candidate.image} />
             <span className="candidate-story-ring" />
             <div>
@@ -1571,6 +1653,117 @@ function CandidateStories() {
           </button>
         ))}
       </div>
+    </section>
+  );
+}
+
+function CandidateQuestionView({ candidate, isCandidate, onAnswer, onAsk, onBack, questions }) {
+  const answeredQuestions = questions.filter((question) => question.answer);
+  const pendingQuestions = questions.filter((question) => !question.answer);
+  const topicCounts = candidateQuestionTopics.map((topic) => ({
+    topic,
+    count: questions.filter((question) => question.topic === topic).length,
+  })).filter((item) => item.count > 0);
+
+  return (
+    <section className="candidate-page">
+      <button className="ghost-button profile-back-button" onClick={onBack} type="button">Voltar ao feed</button>
+
+      <header className="candidate-hero">
+        <img alt={`Foto de ${candidate.name}`} src={candidate.image} />
+        <div>
+          <p className="eyebrow">Pergunte ao candidato</p>
+          <h1>{candidate.name}</h1>
+          <strong>{candidate.role}</strong>
+          <p>{candidate.bio}</p>
+        </div>
+      </header>
+
+      <div className="candidate-stats">
+        <article>
+          <strong>{questions.length}</strong>
+          <span>perguntas</span>
+        </article>
+        <article>
+          <strong>{answeredQuestions.length}</strong>
+          <span>respondidas</span>
+        </article>
+        <article>
+          <strong>{pendingQuestions.length}</strong>
+          <span>aguardando</span>
+        </article>
+      </div>
+
+      <section className="candidate-question-box">
+        <div className="panel-title">
+          <h2>Envie uma pergunta</h2>
+          <small>Escolha um tema e escreva de forma direta. A resposta ficará pública.</small>
+        </div>
+        <form onSubmit={(event) => onAsk(event, candidate.slug)}>
+          <select name="topic" required>
+            {candidateQuestionTopics.map((topic) => <option key={topic} value={topic}>{topic}</option>)}
+          </select>
+          <textarea maxLength={500} name="question" placeholder={`O que você quer perguntar para ${candidate.name}?`} required />
+          <button className="primary-button" type="submit">Enviar pergunta</button>
+        </form>
+      </section>
+
+      <section className="candidate-board">
+        <div className="panel-title">
+          <h2>Mural de respostas</h2>
+          <small>{answeredQuestions.length} respostas públicas</small>
+        </div>
+        <div className="candidate-topic-strip">
+          {topicCounts.length === 0 ? (
+            <span>Nenhum tema perguntado ainda</span>
+          ) : (
+            topicCounts.map((item) => <span key={item.topic}>{item.topic} <strong>{item.count}</strong></span>)
+          )}
+        </div>
+
+        <div className="candidate-question-list">
+          {questions.length === 0 ? (
+            <article className="empty-feed">
+              <strong>Nenhuma pergunta ainda.</strong>
+              <span>Seja a primeira pessoa a perguntar para {candidate.name}.</span>
+            </article>
+          ) : (
+            questions.map((question) => (
+              <article className={question.answer ? "candidate-question answered" : "candidate-question"} key={question.id}>
+                <div className="candidate-question-meta">
+                  <Avatar profile={question.author} />
+                  <div>
+                    <strong>{question.author?.name || "Morador"}</strong>
+                    <span>{question.topic}</span>
+                  </div>
+                  <small>{question.answer ? "Respondida" : "Aguardando resposta"}</small>
+                </div>
+                <p className="candidate-question-text">{question.question}</p>
+
+                {question.answer ? (
+                  <div className="candidate-answer">
+                    <strong>Resposta de {candidate.name}</strong>
+                    <p>{question.answer}</p>
+                    {question.answered_at && <small>{formatReportDate(question.answered_at)}</small>}
+                  </div>
+                ) : (
+                  <div className="candidate-answer pending">
+                    <strong>Aguardando resposta</strong>
+                    <p>A pergunta já está visível no mural da candidata.</p>
+                  </div>
+                )}
+
+                {isCandidate && (
+                  <form className="candidate-answer-form" onSubmit={(event) => onAnswer(event, question.id)}>
+                    <textarea defaultValue={question.answer || ""} name="answer" placeholder="Escreva a resposta pública da candidata" required />
+                    <button className="ghost-button" type="submit">{question.answer ? "Atualizar resposta" : "Responder"}</button>
+                  </form>
+                )}
+              </article>
+            ))
+          )}
+        </div>
+      </section>
     </section>
   );
 }
