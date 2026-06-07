@@ -1,0 +1,19 @@
+{
+  "name": "Nodus | Fluxo da Informação",
+  "short_name": "Nodus",
+  "description": "Rede local para relatos, debates e acompanhamento comunitário.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#fafafa",
+  "theme_color": "#111111",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

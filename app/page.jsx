@@ -37,6 +37,7 @@ export default function HomePage() {
   const [notifications, setNotifications] = useState([]);
   const [follows, setFollows] = useState([]);
   const [showAlerts, setShowAlerts] = useState(false);
+  const [composerOpen, setComposerOpen] = useState(false);
   const [authMode, setAuthMode] = useState("login");
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
@@ -82,6 +83,11 @@ export default function HomePage() {
 
     return () => listener.subscription.unsubscribe();
   }, [supabase]);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !("serviceWorker" in navigator)) return;
+    navigator.serviceWorker.register("/sw.js").catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (!session?.user || !supabase) {
@@ -509,6 +515,7 @@ export default function HomePage() {
     setPostProgress(100);
     setPostStatus("Publicado.");
     clearPostComposer();
+    setComposerOpen(false);
     setTimeout(() => {
       setPosting(false);
       setPostStatus("");
@@ -1020,6 +1027,9 @@ export default function HomePage() {
                   <p className="eyebrow">Comunidade local</p>
                   <h1 className="feed-title">Feed</h1>
                 </div>
+                <button className="compose-toggle" onClick={() => setComposerOpen((open) => !open)} type="button">
+                  {composerOpen ? "Fechar publicação" : "Nova publicação"}
+                </button>
                 <div className="feed-search">
                   <input onChange={(event) => setQuery(event.target.value)} placeholder="Buscar rua, bairro ou assunto" />
                   <select onChange={(event) => setFilter(event.target.value)} value={filter}>
@@ -1030,15 +1040,17 @@ export default function HomePage() {
                 </div>
               </header>
 
-              <section className="composer">
-                <div className="composer-user">
-                  <Avatar profile={profile} />
-                  <div>
-                    <strong>{profile?.name || "Morador"}</strong>
-                    <small>Publique uma foto da rua e abra um debate</small>
-                  </div>
-                </div>
-                <form onSubmit={createPost}>
+              <section className={composerOpen ? "composer open" : "composer compact"}>
+                {composerOpen ? (
+                  <>
+                    <div className="composer-user">
+                      <Avatar profile={profile} />
+                      <div>
+                        <strong>{profile?.name || "Morador"}</strong>
+                        <small>Publique uma foto da rua e abra um debate</small>
+                      </div>
+                    </div>
+                    <form onSubmit={createPost}>
                   <textarea
                     className="composer-textarea"
                     disabled={posting}
@@ -1098,7 +1110,14 @@ export default function HomePage() {
                       <progress max="100" value={postProgress}>{postProgress}%</progress>
                     </div>
                   )}
-                </form>
+                    </form>
+                  </>
+                ) : (
+                  <button className="composer-prompt" onClick={() => setComposerOpen(true)} type="button">
+                    <Avatar profile={profile} />
+                    <span>Compartilhe uma rua, ideia ou problema da cidade.</span>
+                  </button>
+                )}
               </section>
 
               <section className="feed">

@@ -7,6 +7,7 @@
   --line: #dbdbdb;
   --line-soft: #efefef;
   --accent: #111111;
+  --accent-2: #595959;
   --danger: #ed4956;
   --ok: #168a5b;
   --focus: rgba(0, 149, 246, 0.16);
@@ -261,7 +262,7 @@ small {
 
 .profile-chip {
   gap: 10px;
-  margin-top: auto;
+  margin-top: 4px;
   padding: 10px;
   border-radius: 8px;
   background: var(--surface-muted);
@@ -406,19 +407,19 @@ small {
 }
 
 .logout-button {
-  margin-top: 0;
+  margin-top: auto;
 }
 
 .content {
-  width: min(100%, 1180px);
+  width: min(100%, 1240px);
   margin: 0 auto;
-  padding: 28px;
+  padding: 24px;
 }
 
 .social-layout {
   display: grid;
-  grid-template-columns: minmax(0, 650px) 320px;
-  gap: 34px;
+  grid-template-columns: minmax(0, 680px) 300px;
+  gap: 24px;
   justify-content: center;
   align-items: start;
 }
@@ -430,9 +431,10 @@ small {
 }
 
 .feed-topbar {
-  justify-content: space-between;
-  gap: 16px;
-  padding: 0 0 4px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  padding: 0 0 2px;
 }
 
 .eyebrow {
@@ -458,10 +460,21 @@ small {
 }
 
 .feed-search {
-  width: min(100%, 420px);
+  grid-column: 1 / -1;
+  width: 100%;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 150px;
+  grid-template-columns: minmax(0, 1fr) 180px;
   gap: 8px;
+}
+
+.compose-toggle {
+  min-height: 42px;
+  border: 0;
+  border-radius: 8px;
+  padding: 0 14px;
+  color: #fff;
+  background: var(--ink);
+  font-weight: 900;
 }
 
 .composer,
@@ -479,8 +492,35 @@ small {
 .composer {
   display: grid;
   gap: 12px;
-  padding: 16px;
   box-shadow: 0 8px 26px rgba(0, 0, 0, 0.04);
+}
+
+.composer.open {
+  padding: 16px;
+}
+
+.composer.compact {
+  padding: 0;
+  box-shadow: none;
+}
+
+.composer-prompt {
+  width: 100%;
+  min-height: 58px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: 0;
+  border-radius: 8px;
+  padding: 10px 14px;
+  color: var(--muted);
+  background: var(--surface);
+  text-align: left;
+  font-weight: 800;
+}
+
+.composer-prompt:hover {
+  background: var(--surface-muted);
 }
 
 .composer-user {
@@ -1212,14 +1252,14 @@ small {
   position: sticky;
   top: 24px;
   display: grid;
-  gap: 14px;
+  gap: 10px;
 }
 
 .profile-editor,
 .topic-panel {
   display: grid;
-  gap: 12px;
-  padding: 14px;
+  gap: 10px;
+  padding: 12px;
 }
 
 .mobile-profile-editor {
@@ -1234,12 +1274,14 @@ small {
 .panel-title h2,
 .topic-panel h2 {
   margin: 0;
-  font-size: 1.15rem;
+  font-size: 1rem;
 }
 
 .topic-list {
   display: grid;
-  gap: 8px;
+  gap: 7px;
+  max-height: 230px;
+  overflow-y: auto;
 }
 
 .topic-item {
@@ -1545,8 +1587,11 @@ th {
   }
 
   .feed-topbar {
-    align-items: flex-start;
-    flex-direction: column;
+    grid-template-columns: 1fr;
+  }
+
+  .compose-toggle {
+    width: 100%;
   }
 
   .debate-grid,
