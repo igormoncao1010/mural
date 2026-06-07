@@ -278,6 +278,11 @@ small {
   display: none;
 }
 
+.mobile-nav-settings,
+.mobile-nav-alerts {
+  display: none;
+}
+
 .profile-chip {
   gap: 10px;
   margin-top: 4px;
@@ -1700,7 +1705,7 @@ th {
   .side-nav {
     min-width: 0;
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr)) 70px repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr)) 70px repeat(3, minmax(0, 1fr));
     gap: 2px;
     flex: 1;
     overflow: visible;
@@ -1716,6 +1721,10 @@ th {
     font-size: 0.66rem;
     line-height: 1.1;
     text-align: center;
+  }
+
+  .side-nav-item span {
+    display: none;
   }
 
   .mobile-compose-nav {
@@ -1740,14 +1749,15 @@ th {
     stroke-width: 2.4;
   }
 
-  .side-nav-item:nth-child(6),
-  .side-nav-item:nth-child(7) {
+  .side-nav-item:nth-child(8),
+  .side-nav-item:nth-child(9),
+  .side-nav-item:nth-child(10) {
     display: none;
   }
 
   .nav-icon {
-    width: 20px;
-    height: 20px;
+    width: 22px;
+    height: 22px;
   }
 
   .profile-chip,
@@ -1756,32 +1766,49 @@ th {
     display: none;
   }
 
-  .alerts-block {
+  .sidebar > .alerts-block,
+  .sidebar > .mobile-settings-button {
+    display: none;
+  }
+
+  .mobile-nav-settings {
+    width: 100%;
+    min-height: 54px;
+    display: grid;
+    place-items: center;
+    border: 0;
+    border-radius: 8px;
+    color: var(--ink);
+    background: transparent;
+    padding: 0;
+  }
+
+  .mobile-nav-alerts {
     position: relative;
-    flex: 0 0 auto;
+    display: grid;
+    place-items: center;
+    min-height: 54px;
   }
 
   .alerts-button {
-    width: 42px;
-    height: 42px;
-    min-height: 42px;
+    width: 100%;
+    height: 54px;
+    min-height: 54px;
     justify-content: center;
     padding: 0;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
   }
 
   .alerts-button span {
     font-size: 0;
   }
 
-  .alerts-button span::before {
-    content: "!";
-    font-size: 1rem;
-  }
-
   .alerts-button strong {
     position: absolute;
-    top: -5px;
-    right: -5px;
+    top: 4px;
+    right: 8px;
   }
 
   .alerts-panel {
@@ -1790,19 +1817,6 @@ th {
     bottom: calc(100% + 10px);
     right: 0;
     width: min(88vw, 340px);
-  }
-
-  .mobile-settings-button {
-    width: 42px;
-    height: 42px;
-    flex: 0 0 auto;
-    display: grid;
-    place-items: center;
-    border: 1px solid var(--line);
-    border-radius: 8px;
-    color: var(--ink);
-    background: var(--surface);
-    font-weight: 900;
   }
 
   .mobile-profile-editor {

@@ -886,6 +886,7 @@ export default function HomePage() {
         <nav className="side-nav" aria-label="Navegação principal">
           <button className={activeView === "feed" ? "side-nav-item active" : "side-nav-item"} onClick={goToFeed} type="button"><FeedIcon /><span>Feed</span></button>
           <button className={activeView === "debates" ? "side-nav-item active" : "side-nav-item"} onClick={() => setActiveView("debates")} type="button"><DebateIcon /><span>Debates</span></button>
+          <button className={activeView === "ranking" ? "side-nav-item active" : "side-nav-item"} onClick={() => setActiveView("ranking")} type="button"><RankingIcon /><span>Ranking</span></button>
           <button
             aria-label="Nova publicação"
             className="mobile-compose-nav"
@@ -897,8 +898,23 @@ export default function HomePage() {
           >
             <PlusIcon />
           </button>
-          <button className={activeView === "ranking" ? "side-nav-item active" : "side-nav-item"} onClick={() => setActiveView("ranking")} type="button"><RankingIcon /><span>Ranking</span></button>
           <button className={activeView === "categories" ? "side-nav-item active" : "side-nav-item"} onClick={() => setActiveView("categories")} type="button"><CategoryIcon /><span>Categorias</span></button>
+          <button className="mobile-settings-button mobile-nav-settings" onClick={() => setShowProfileSettings((open) => !open)} title="Configurações do perfil" type="button"><SettingsIcon /></button>
+          <div className="alerts-block mobile-nav-alerts">
+            <button
+              className={showAlerts ? "alerts-button active" : "alerts-button"}
+              onClick={() => {
+                setShowAlerts((open) => !open);
+                if (!showAlerts) markNotificationsAsRead();
+              }}
+              title="Notificações"
+              type="button"
+            >
+              <BellIcon />
+              {unreadNotifications > 0 && <strong>{unreadNotifications}</strong>}
+            </button>
+            {showAlerts && <NotificationsPanel notifications={notifications} />}
+          </div>
           <button className={activeView === "about" ? "side-nav-item active" : "side-nav-item"} onClick={() => setActiveView("about")} type="button"><InfoIcon /><span>Sobre</span></button>
           <button className={activeView === "terms" ? "side-nav-item active" : "side-nav-item"} onClick={() => setActiveView("terms")} type="button"><TermsIcon /><span>Termos</span></button>
           {isAdmin && (
@@ -2021,6 +2037,14 @@ function RankingIcon() {
 
 function PlusIcon() {
   return <NavSvg><path d="M12 5v14M5 12h14" /></NavSvg>;
+}
+
+function SettingsIcon() {
+  return <NavSvg><path d="M12 15a3 3 0 100-6 3 3 0 000 6zM12 2v3M12 19v3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M2 12h3M19 12h3M4.9 19.1L7 17M17 7l2.1-2.1" /></NavSvg>;
+}
+
+function BellIcon() {
+  return <NavSvg><path d="M18 8a6 6 0 10-12 0c0 7-3 7-3 7h18s-3 0-3-7M10 19a2 2 0 004 0" /></NavSvg>;
 }
 
 function CategoryIcon() {
