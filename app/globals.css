@@ -561,7 +561,7 @@ small {
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, rgba(0, 0, 0, 0.02) 0%, rgba(0, 0, 0, 0.08) 45%, rgba(0, 0, 0, 0.72) 100%);
+  background: linear-gradient(180deg, transparent 0%, transparent 58%, rgba(0, 0, 0, 0.7) 100%);
 }
 
 .candidate-story-card img {
@@ -579,6 +579,9 @@ small {
   border: 2px solid transparent;
   border-radius: 10px;
   background: linear-gradient(transparent, transparent) padding-box, linear-gradient(135deg, #ff365f, #ffcf3f, #088bff) border-box;
+  -webkit-mask: linear-gradient(#000 0 0) padding-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
   opacity: 0.95;
   pointer-events: none;
 }
