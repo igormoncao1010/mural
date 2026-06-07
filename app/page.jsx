@@ -899,7 +899,6 @@ export default function HomePage() {
             <PlusIcon />
           </button>
           <button className={activeView === "categories" ? "side-nav-item active" : "side-nav-item"} onClick={() => setActiveView("categories")} type="button"><CategoryIcon /><span>Categorias</span></button>
-          <button className="mobile-settings-button mobile-nav-settings" onClick={() => setShowProfileSettings((open) => !open)} title="Configurações do perfil" type="button"><SettingsIcon /></button>
           <div className="alerts-block mobile-nav-alerts">
             <button
               className={showAlerts ? "alerts-button active" : "alerts-button"}
@@ -915,6 +914,9 @@ export default function HomePage() {
             </button>
             {showAlerts && <NotificationsPanel notifications={notifications} />}
           </div>
+          <button className="mobile-profile-nav" onClick={() => openPublicProfile(profile, session.user.id)} title="Meu perfil" type="button">
+            <Avatar profile={profile} />
+          </button>
           <button className={activeView === "about" ? "side-nav-item active" : "side-nav-item"} onClick={() => setActiveView("about")} type="button"><InfoIcon /><span>Sobre</span></button>
           <button className={activeView === "terms" ? "side-nav-item active" : "side-nav-item"} onClick={() => setActiveView("terms")} type="button"><TermsIcon /><span>Termos</span></button>
           {isAdmin && (
@@ -960,7 +962,7 @@ export default function HomePage() {
       <section className="content">
         {message && <p className="notice">{message}</p>}
 
-        {showProfileSettings && (
+        {showProfileSettings && activeView !== "public-profile" && (
           <section className="profile-editor mobile-profile-editor">
             <div className="panel-title">
               <h2>Configurações</h2>
@@ -984,8 +986,12 @@ export default function HomePage() {
           <PublicProfileView
             debates={activeDebates}
             follows={follows}
+            isEditingProfile={showProfileSettings}
+            isOwnProfile={viewedProfile.id === session.user.id}
+            onEditProfile={() => setShowProfileSettings((open) => !open)}
             onFollow={toggleFollow}
             onBack={() => setActiveView("feed")}
+            onUpdateProfile={updateProfile}
             postsAll={posts}
             posts={posts.filter((post) => post.user_id === viewedProfile.id)}
             profile={viewedProfile}
@@ -1540,7 +1546,7 @@ function CategoriesView({ categoryCounts, onSelectCategory, posts }) {
   );
 }
 
-function PublicProfileView({ debates, follows, onBack, onFollow, posts, postsAll, profile, sessionUserId }) {
+function PublicProfileView({ debates, follows, isEditingProfile, isOwnProfile, onBack, onEditProfile, onFollow, onUpdateProfile, posts, postsAll, profile, sessionUserId }) {
   const profileLikes = posts.reduce((total, post) => total + (post.likes?.length || 0), 0);
   const profileComments = postsAll.reduce((total, post) => total + (post.comments || []).filter((comment) => comment.user_id === profile.id).length, 0);
   const score = posts.length * 4 + profileComments * 2 + profileLikes;
@@ -1563,6 +1569,11 @@ function PublicProfileView({ debates, follows, onBack, onFollow, posts, postsAll
               {canFollow && (
                 <button className="ghost-button follow-button" onClick={() => onFollow(profile.id)} type="button">
                   {isFollowing ? "Acompanhando" : "Acompanhar"}
+                </button>
+              )}
+              {isOwnProfile && (
+                <button className="ghost-button profile-settings-inline" onClick={onEditProfile} type="button">
+                  {isEditingProfile ? "Fechar configurações" : "Configurações"}
                 </button>
               )}
             </div>
@@ -1596,6 +1607,25 @@ function PublicProfileView({ debates, follows, onBack, onFollow, posts, postsAll
           </div>
         </div>
       </section>
+      {isOwnProfile && isEditingProfile && (
+        <section className="profile-editor profile-editor-inline">
+          <div className="panel-title">
+            <h2>Configurações do perfil</h2>
+            <Avatar profile={profile} />
+          </div>
+          <form onSubmit={onUpdateProfile}>
+            <input defaultValue={profile?.name || ""} name="name" placeholder="Nome público" required />
+            <input defaultValue={profile?.neighborhood || ""} name="neighborhood" placeholder="Bairro / região" />
+            <input defaultValue={profile?.contact || ""} name="contact" placeholder="Contato público" />
+            <textarea defaultValue={profile?.bio || ""} name="bio" placeholder="Bio curta" />
+            <label className="upload-line">
+              Foto de perfil
+              <input accept="image/*" name="avatar" type="file" />
+            </label>
+            <button className="primary-button" type="submit">Salvar perfil</button>
+          </form>
+        </section>
+      )}
       <section className="public-profile-posts">
         <div className="section-heading">
           <h2>Conteúdo postado</h2>
@@ -2037,10 +2067,6 @@ function RankingIcon() {
 
 function PlusIcon() {
   return <NavSvg><path d="M12 5v14M5 12h14" /></NavSvg>;
-}
-
-function SettingsIcon() {
-  return <NavSvg><path d="M12 15a3 3 0 100-6 3 3 0 000 6zM12 2v3M12 19v3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M2 12h3M19 12h3M4.9 19.1L7 17M17 7l2.1-2.1" /></NavSvg>;
 }
 
 function BellIcon() {

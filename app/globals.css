@@ -279,7 +279,8 @@ small {
 }
 
 .mobile-nav-settings,
-.mobile-nav-alerts {
+.mobile-nav-alerts,
+.mobile-profile-nav {
   display: none;
 }
 
@@ -1086,6 +1087,10 @@ small {
   width: fit-content;
 }
 
+.profile-editor-inline {
+  padding: 18px;
+}
+
 .public-profile-card {
   display: grid;
   gap: 22px;
@@ -1788,6 +1793,25 @@ th {
     display: grid;
     place-items: center;
     min-height: 54px;
+  }
+
+  .mobile-profile-nav {
+    width: 100%;
+    min-height: 54px;
+    display: grid;
+    place-items: center;
+    border: 0;
+    border-radius: 8px;
+    color: var(--ink);
+    background: transparent;
+    padding: 0;
+  }
+
+  .mobile-profile-nav .avatar {
+    width: 28px;
+    height: 28px;
+    border: 2px solid var(--ink);
+    font-size: 0.7rem;
   }
 
   .alerts-button {
