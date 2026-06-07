@@ -821,10 +821,6 @@ export default function HomePage() {
       return items;
     }, {})
   ).sort((a, b) => b.count - a.count);
-  const topicCounts = activeDebates.map((topic) => ({
-    ...topic,
-    count: posts.filter((post) => post.topic === topic.slug).length,
-  }));
   const brasiliaUsers = adminProfiles.filter((person) =>
     /brasilia|df|samambaia|ceilandia|taguatinga|sobradinho|guara|gama|planaltina|recanto|riacho|paranoa|nucleo|brazlandia|cruzeiro|sudoeste|octogonal|aguas claras|vicente pires/i.test(person.neighborhood || "")
   ).length;
@@ -888,12 +884,14 @@ export default function HomePage() {
         </div>
 
         <nav className="side-nav" aria-label="Navegação principal">
-          <button className={activeView === "feed" ? "side-nav-item active" : "side-nav-item"} onClick={goToFeed} type="button">Feed</button>
-          <button className={activeView === "debates" ? "side-nav-item active" : "side-nav-item"} onClick={() => setActiveView("debates")} type="button">Debates</button>
-          <button className={activeView === "about" ? "side-nav-item active" : "side-nav-item"} onClick={() => setActiveView("about")} type="button">Sobre</button>
-          <button className={activeView === "terms" ? "side-nav-item active" : "side-nav-item"} onClick={() => setActiveView("terms")} type="button">Termos</button>
+          <button className={activeView === "feed" ? "side-nav-item active" : "side-nav-item"} onClick={goToFeed} type="button"><FeedIcon /><span>Feed</span></button>
+          <button className={activeView === "debates" ? "side-nav-item active" : "side-nav-item"} onClick={() => setActiveView("debates")} type="button"><DebateIcon /><span>Debates</span></button>
+          <button className={activeView === "ranking" ? "side-nav-item active" : "side-nav-item"} onClick={() => setActiveView("ranking")} type="button"><RankingIcon /><span>Ranking</span></button>
+          <button className={activeView === "categories" ? "side-nav-item active" : "side-nav-item"} onClick={() => setActiveView("categories")} type="button"><CategoryIcon /><span>Categorias</span></button>
+          <button className={activeView === "about" ? "side-nav-item active" : "side-nav-item"} onClick={() => setActiveView("about")} type="button"><InfoIcon /><span>Sobre</span></button>
+          <button className={activeView === "terms" ? "side-nav-item active" : "side-nav-item"} onClick={() => setActiveView("terms")} type="button"><TermsIcon /><span>Termos</span></button>
           {isAdmin && (
-            <button className={activeView === "admin" ? "side-nav-item active" : "side-nav-item"} onClick={() => setActiveView("admin")} type="button">Admin</button>
+            <button className={activeView === "admin" ? "side-nav-item active" : "side-nav-item"} onClick={() => setActiveView("admin")} type="button"><AdminIcon /><span>Admin</span></button>
           )}
         </nav>
 
@@ -995,6 +993,18 @@ export default function HomePage() {
             onCreateDebate={createDebate}
             onSelectDebate={(slug) => {
               setFilter(slug);
+              setActiveView("feed");
+            }}
+            posts={posts}
+          />
+        ) : activeView === "ranking" ? (
+          <RankingView ranking={ranking} onOpenProfile={openPublicProfile} />
+        ) : activeView === "categories" ? (
+          <CategoriesView
+            categoryCounts={categoryCounts}
+            onSelectCategory={(category) => {
+              setPostDraft((draft) => ({ ...draft, category }));
+              setComposerOpen(true);
               setActiveView("feed");
             }}
             posts={posts}
@@ -1248,18 +1258,6 @@ export default function HomePage() {
               )}
 
               <section className="topic-panel">
-                <h2>Debates ativos</h2>
-                <div className="topic-list">
-                  {topicCounts.map((topic) => (
-                    <button className={filter === topic.slug ? "topic-item active" : "topic-item"} key={topic.slug} onClick={() => setFilter(topic.slug)} type="button">
-                      <span>{topic.title}</span>
-                      <strong>{topic.count}</strong>
-                    </button>
-                  ))}
-                </div>
-              </section>
-
-              <section className="topic-panel">
                 <h2>Mapa de problemas</h2>
                 <div className="topic-list">
                   {regionCounts.slice(0, 6).map((region) => (
@@ -1269,18 +1267,6 @@ export default function HomePage() {
                     </div>
                   ))}
                   {regionCounts.length === 0 && <div className="topic-item read-only"><span>Nenhuma região ainda</span><strong>0</strong></div>}
-                </div>
-              </section>
-
-              <section className="topic-panel">
-                <h2>Ranking</h2>
-                <div className="topic-list">
-                  {ranking.slice(0, 5).map((person) => (
-                    <button className="topic-item" key={person.id} onClick={() => openPublicProfile(person, person.id)} type="button">
-                      <span>{person.name || "Morador"}</span>
-                      <strong>{person.score}</strong>
-                    </button>
-                  ))}
                 </div>
               </section>
 
@@ -1296,17 +1282,6 @@ export default function HomePage() {
                 </div>
               </section>
 
-              <section className="topic-panel">
-                <h2>Categorias</h2>
-                <div className="topic-list">
-                  {categoryCounts.map((category) => (
-                    <div className="topic-item read-only" key={category.value}>
-                      <span>{category.label}</span>
-                      <strong>{category.count}</strong>
-                    </div>
-                  ))}
-                </div>
-              </section>
             </aside>
           </div>
         )}
@@ -1455,6 +1430,85 @@ function NotificationsPanel({ notifications }) {
           ))}
         </div>
       )}
+    </section>
+  );
+}
+
+function RankingView({ onOpenProfile, ranking }) {
+  return (
+    <section className="view-panel">
+      <header className="view-header">
+        <div>
+          <p className="eyebrow">Comunidade</p>
+          <h1>Ranking</h1>
+        </div>
+      </header>
+
+      <div className="directory-list">
+        {ranking.length === 0 ? (
+          <article className="empty-feed">
+            <strong>Nenhum participante ranqueado ainda.</strong>
+            <span>O ranking aparece conforme as pessoas publicam, comentam e recebem curtidas.</span>
+          </article>
+        ) : (
+          ranking.map((person, index) => (
+            <button className="directory-item" key={person.id} onClick={() => onOpenProfile(person, person.id)} type="button">
+              <span className="rank-number">{index + 1}</span>
+              <Avatar profile={person} />
+              <div>
+                <strong>{person.name || "Morador"}</strong>
+                <small>{person.neighborhood || "Bairro não informado"}</small>
+              </div>
+              <div className="directory-metrics">
+                <strong>{person.score}</strong>
+                <span>pontos</span>
+              </div>
+              <div className="directory-metrics compact">
+                <strong>{person.posts}</strong>
+                <span>posts</span>
+              </div>
+              <div className="directory-metrics compact">
+                <strong>{person.receivedLikes}</strong>
+                <span>curtidas</span>
+              </div>
+            </button>
+          ))
+        )}
+      </div>
+    </section>
+  );
+}
+
+function CategoriesView({ categoryCounts, onSelectCategory, posts }) {
+  const total = Math.max(posts.length, 1);
+
+  return (
+    <section className="view-panel">
+      <header className="view-header">
+        <div>
+          <p className="eyebrow">Organização</p>
+          <h1>Categorias</h1>
+        </div>
+      </header>
+
+      <div className="category-directory">
+        {categoryCounts.map((category) => {
+          const percent = Math.round((category.count / total) * 100);
+
+          return (
+            <article className="category-card" key={category.value}>
+              <div>
+                <strong>{category.label}</strong>
+                <span>{category.count} publicações</span>
+              </div>
+              <div className="category-bar" aria-label={`${percent}% das publicações`}>
+                <span style={{ width: `${percent}%` }} />
+              </div>
+              <button className="ghost-button" onClick={() => onSelectCategory(category.value)} type="button">Publicar nessa categoria</button>
+            </article>
+          );
+        })}
+      </div>
     </section>
   );
 }
@@ -1936,6 +1990,38 @@ function getRoleLabel(role) {
   if (role === "moderator") return "Moderador";
   if (role === "organizer") return "Organizador";
   return "";
+}
+
+function NavSvg({ children }) {
+  return <svg aria-hidden="true" className="nav-icon" viewBox="0 0 24 24">{children}</svg>;
+}
+
+function FeedIcon() {
+  return <NavSvg><path d="M5 5h14M5 12h14M5 19h10" /></NavSvg>;
+}
+
+function DebateIcon() {
+  return <NavSvg><path d="M4 5h16v10H8l-4 4V5z" /></NavSvg>;
+}
+
+function RankingIcon() {
+  return <NavSvg><path d="M5 20V10h4v10M10 20V4h4v16M15 20v-7h4v7" /></NavSvg>;
+}
+
+function CategoryIcon() {
+  return <NavSvg><path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z" /></NavSvg>;
+}
+
+function InfoIcon() {
+  return <NavSvg><path d="M12 17v-6M12 7h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></NavSvg>;
+}
+
+function TermsIcon() {
+  return <NavSvg><path d="M7 4h10l2 2v16H7V4zM9 10h6M9 14h8M9 18h5" /></NavSvg>;
+}
+
+function AdminIcon() {
+  return <NavSvg><path d="M12 3l7 3v5c0 4.5-2.8 7.8-7 10-4.2-2.2-7-5.5-7-10V6l7-3z" /></NavSvg>;
 }
 
 function PaperclipIcon() {
