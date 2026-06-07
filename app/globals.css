@@ -1735,17 +1735,19 @@ th {
   .mobile-compose-nav {
     width: 58px;
     height: 58px;
-    position: fixed;
-    left: 50%;
-    bottom: calc(21px + env(safe-area-inset-bottom));
+    position: relative;
+    left: auto;
+    bottom: auto;
     display: grid;
     place-items: center;
+    align-self: center;
+    justify-self: center;
     border: 5px solid var(--surface);
     border-radius: 50%;
     color: #fff;
     background: #050505;
     box-shadow: 0 10px 24px rgba(0, 0, 0, 0.22);
-    transform: translateX(-50%);
+    transform: translateY(-15px);
   }
 
   .mobile-compose-nav .nav-icon {
