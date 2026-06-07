@@ -1851,49 +1851,18 @@ function AdminView({ activeTab, adminPosts, categoryCounts, debates, metrics, on
   const topProblemRegions = regionCounts.slice(0, 8);
 
   function downloadProblemsReport() {
-    const rows = [
-      ["RELATORIO_TECNICO_PROBLEMAS_BRASILIA_DF"],
-      ["gerado_em", new Date().toISOString()],
-      ["base_posts_analisados", reportPosts.length],
-      ["problemas_mapeados", problemPosts.length],
-      ["nao_resolvidos", unresolvedProblems.length],
-      ["criticos", criticalProblems.length],
-      [],
-      ["RESUMO_POR_CIDADE_REGIAO_E_TIPO"],
-      ["cidade_regiao", "tipo_problema", "total", "abertos", "urgentes", "comentarios", "curtidas"],
-      ...issueRows.map((row) => [row.city, row.category, row.count, row.open, row.urgent, row.comments, row.likes]),
-      [],
-      ["STATUS_OPERACIONAL"],
-      ["status", "quantidade"],
-      ...statusCounts.map((row) => [row.label, row.count]),
-      [],
-      ["CATEGORIAS_GERAIS"],
-      ["categoria", "quantidade"],
-      ...categoryCounts.map((row) => [row.label, row.count]),
-      [],
-      ["MAPA_DE_PROBLEMAS_POR_REGIAO"],
-      ["regiao", "publicacoes", "abertos", "urgentes"],
-      ...regionCounts.map((row) => [row.region, row.count, row.open, row.urgent]),
-      [],
-      ["DETALHAMENTO_TECNICO_DOS_PROBLEMAS"],
-      ["id", "data", "autor", "email_autor", "cidade_regiao", "rua", "tipo", "status", "debate", "curtidas", "comentarios", "descricao", "resposta_admin"],
-      ...problemPosts.map((post) => [
-        post.id,
-        post.created_at || "",
-        post.author?.name || "Morador",
-        post.author?.email || "",
-        post.neighborhood || "Não informado",
-        post.street || "Não informado",
-        categoryLabel(post.category),
-        statusLabel(post.issue_status),
-        post.topic || "",
-        post.likes?.length || 0,
-        post.comments?.length || 0,
-        post.body || "",
-        post.admin_response || "",
-      ]),
-    ];
-    downloadCsv(rows, `nodus-problemas-brasilia-${new Date().toISOString().slice(0, 10)}.csv`);
+    downloadTechnicalReportHtml({
+      categoryCounts,
+      criticalProblems,
+      issueRows,
+      problemPosts,
+      regionCounts,
+      reportPosts,
+      reports,
+      statusCounts,
+      technicalMetrics,
+      unresolvedProblems,
+    });
   }
 
   function downloadLeadsCsv() {
@@ -2350,6 +2319,469 @@ function downloadCsv(rows, filename) {
   const link = document.createElement("a");
   link.href = url;
   link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+function formatReportDate(value) {
+  if (!value) return "Não informado";
+  return new Intl.DateTimeFormat("pt-BR", {
+    dateStyle: "short",
+    timeStyle: "short",
+  }).format(new Date(value));
+}
+
+function renderReportBars(rows, labelKey, valueKey, accent = "#111") {
+  const maxValue = Math.max(...rows.map((row) => Number(row[valueKey]) || 0), 1);
+
+  return rows
+    .map((row) => {
+      const value = Number(row[valueKey]) || 0;
+      const width = Math.max((value / maxValue) * 100, value ? 8 : 0);
+      return `
+        <div class="bar-row">
+          <div class="bar-label">
+            <strong>${escapeHtml(row[labelKey])}</strong>
+            <span>${value}</span>
+          </div>
+          <div class="bar-track">
+            <div class="bar-fill" style="width:${width}%;background:${accent};"></div>
+          </div>
+        </div>
+      `;
+    })
+    .join("");
+}
+
+function renderReportMetricCards(metrics) {
+  return metrics
+    .map((metric) => `
+      <article class="metric">
+        <span>${escapeHtml(metric.label)}</span>
+        <strong>${escapeHtml(metric.value)}</strong>
+      </article>
+    `)
+    .join("");
+}
+
+function renderTechnicalProblemRows(posts) {
+  if (!posts.length) {
+    return `<tr><td colspan="9">Nenhum problema registrado na base analisada.</td></tr>`;
+  }
+
+  return posts
+    .map((post) => `
+      <tr>
+        <td>${formatReportDate(post.created_at)}</td>
+        <td>${escapeHtml(post.neighborhood || "Não informado")}</td>
+        <td>${escapeHtml(post.street || "Não informado")}</td>
+        <td>${escapeHtml(categoryLabel(post.category))}</td>
+        <td>${escapeHtml(statusLabel(post.issue_status))}</td>
+        <td>${post.likes?.length || 0}</td>
+        <td>${post.comments?.length || 0}</td>
+        <td>${escapeHtml(post.author?.name || "Morador")}</td>
+        <td>${escapeHtml(post.body || "")}</td>
+      </tr>
+    `)
+    .join("");
+}
+
+function downloadTechnicalReportHtml({
+  categoryCounts,
+  criticalProblems,
+  issueRows,
+  problemPosts,
+  regionCounts,
+  reportPosts,
+  reports,
+  statusCounts,
+  technicalMetrics,
+  unresolvedProblems,
+}) {
+  const generatedAt = new Date();
+  const topRegions = regionCounts.slice(0, 10);
+  const topIssues = issueRows.slice(0, 12);
+  const criticalRate = problemPosts.length ? Math.round((criticalProblems.length / problemPosts.length) * 100) : 0;
+  const openRate = problemPosts.length ? Math.round((unresolvedProblems.length / problemPosts.length) * 100) : 0;
+  const responseRate = problemPosts.length ? Math.round(((problemPosts.length - unresolvedProblems.length) / problemPosts.length) * 100) : 0;
+  const totalComments = problemPosts.reduce((total, post) => total + (post.comments?.length || 0), 0);
+  const totalLikes = problemPosts.reduce((total, post) => total + (post.likes?.length || 0), 0);
+  const detailedMetrics = [
+    ...technicalMetrics,
+    { label: "Taxa aberta", value: `${openRate}%` },
+    { label: "Pressão crítica", value: `${criticalRate}%` },
+    { label: "Engajamento", value: totalLikes + totalComments },
+  ];
+
+  const html = `<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Nodus | Relatório técnico de problemas</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #0b1218;
+      --muted: #68717a;
+      --line: #dfe4e8;
+      --soft: #f5f7f8;
+      --accent: #111111;
+      --danger: #e5484d;
+      --warning: #f5a524;
+      --ok: #138a5e;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #eef2f3;
+      color: var(--ink);
+    }
+    main {
+      width: min(1180px, calc(100% - 40px));
+      margin: 28px auto;
+      display: grid;
+      gap: 18px;
+    }
+    section, header {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 24px;
+      box-shadow: 0 16px 40px rgba(8, 19, 30, 0.06);
+    }
+    .hero {
+      min-height: 280px;
+      display: grid;
+      align-content: end;
+      color: #fff;
+      background:
+        radial-gradient(circle at 85% 15%, rgba(198, 255, 0, 0.32), transparent 28%),
+        linear-gradient(135deg, #071115 0%, #111 42%, #0f766e 100%);
+      border: 0;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 54px;
+      font-weight: 900;
+    }
+    .brand-icon {
+      display: grid;
+      place-items: center;
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      background: #fff;
+      color: #111;
+      font-size: 24px;
+    }
+    .eyebrow {
+      margin: 0 0 8px;
+      color: inherit;
+      opacity: .72;
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+    }
+    h1, h2, p { margin-top: 0; }
+    h1 {
+      max-width: 820px;
+      margin-bottom: 12px;
+      font-size: clamp(38px, 6vw, 76px);
+      line-height: .95;
+      letter-spacing: 0;
+    }
+    h2 {
+      margin-bottom: 6px;
+      font-size: 24px;
+    }
+    .hero-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      color: rgba(255,255,255,.84);
+      font-weight: 800;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+    }
+    .metric {
+      min-height: 104px;
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: var(--soft);
+    }
+    .metric span {
+      display: block;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 900;
+    }
+    .metric strong {
+      display: block;
+      margin-top: 10px;
+      font-size: 36px;
+      line-height: 1;
+    }
+    .two-col {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 18px;
+    }
+    .panel-note {
+      color: var(--muted);
+      font-weight: 700;
+    }
+    .bar-list {
+      display: grid;
+      gap: 12px;
+      margin-top: 18px;
+    }
+    .bar-label {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 6px;
+      font-size: 14px;
+    }
+    .bar-label span {
+      color: var(--muted);
+      font-weight: 900;
+    }
+    .bar-track {
+      height: 12px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: #e9edef;
+    }
+    .bar-fill {
+      height: 100%;
+      border-radius: inherit;
+    }
+    .issue-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 18px;
+    }
+    .issue-card {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 16px;
+      background: #fff;
+    }
+    .issue-card strong {
+      display: block;
+      font-size: 18px;
+    }
+    .issue-card span {
+      color: var(--muted);
+      font-weight: 800;
+    }
+    .issue-stats {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+      margin-top: 14px;
+    }
+    .issue-stats div {
+      padding: 10px;
+      border-radius: 10px;
+      background: var(--soft);
+    }
+    .issue-stats small {
+      display: block;
+      color: var(--muted);
+      font-weight: 900;
+    }
+    .issue-stats b {
+      display: block;
+      margin-top: 4px;
+      font-size: 20px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 18px;
+      font-size: 13px;
+    }
+    th, td {
+      padding: 12px 10px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+    th {
+      color: var(--muted);
+      font-size: 11px;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+    .risk {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 18px;
+    }
+    .risk-card {
+      padding: 16px;
+      border-radius: 14px;
+      color: #fff;
+      background: #111;
+    }
+    .risk-card.warning { background: var(--warning); color: #211600; }
+    .risk-card.danger { background: var(--danger); }
+    .risk-card.ok { background: var(--ok); }
+    .risk-card span { display: block; font-weight: 900; opacity: .76; }
+    .risk-card strong { display: block; margin-top: 8px; font-size: 34px; }
+    .print-note {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+      text-align: center;
+    }
+    @media print {
+      body { background: #fff; }
+      main { width: 100%; margin: 0; }
+      section, header { box-shadow: none; break-inside: avoid; }
+    }
+    @media (max-width: 820px) {
+      main { width: min(100% - 20px, 1180px); }
+      .grid, .two-col, .issue-grid, .risk { grid-template-columns: 1fr; }
+      h1 { font-size: 42px; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header class="hero">
+      <div class="brand"><div class="brand-icon">N</div><span>Nodus</span></div>
+      <p class="eyebrow">Relatório técnico operacional</p>
+      <h1>Mapa de problemas públicos de Brasília/DF</h1>
+      <div class="hero-meta">
+        <span>Gerado em ${formatReportDate(generatedAt)}</span>
+        <span>${reportPosts.length} publicações analisadas</span>
+        <span>${problemPosts.length} problemas classificados</span>
+      </div>
+    </header>
+
+    <section>
+      <p class="eyebrow">Resumo executivo</p>
+      <h2>Indicadores principais</h2>
+      <p class="panel-note">Leitura consolidada da atividade pública, regiões críticas, status de atendimento e engajamento comunitário.</p>
+      <div class="grid">${renderReportMetricCards(detailedMetrics)}</div>
+    </section>
+
+    <section>
+      <p class="eyebrow">Risco operacional</p>
+      <h2>Pressão da comunidade</h2>
+      <div class="risk">
+        <div class="risk-card danger"><span>Problemas críticos</span><strong>${criticalProblems.length}</strong><small>${criticalRate}% da base de problemas</small></div>
+        <div class="risk-card warning"><span>Demandas abertas</span><strong>${unresolvedProblems.length}</strong><small>${openRate}% ainda sem resolução</small></div>
+        <div class="risk-card ok"><span>Taxa de resposta</span><strong>${responseRate}%</strong><small>Estimativa por status resolvido</small></div>
+      </div>
+    </section>
+
+    <section class="two-col">
+      <div>
+        <p class="eyebrow">Gráfico</p>
+        <h2>Problemas por região</h2>
+        <p class="panel-note">Ranking das regiões com maior concentração de publicações e demandas abertas.</p>
+        <div class="bar-list">${renderReportBars(topRegions, "region", "count", "#111111")}</div>
+      </div>
+      <div>
+        <p class="eyebrow">Gráfico</p>
+        <h2>Tipos de problema</h2>
+        <p class="panel-note">Distribuição por categoria para priorização de pauta e resposta pública.</p>
+        <div class="bar-list">${renderReportBars(categoryCounts, "label", "count", "#0f766e")}</div>
+      </div>
+    </section>
+
+    <section class="two-col">
+      <div>
+        <p class="eyebrow">Status</p>
+        <h2>Situação das demandas</h2>
+        <div class="bar-list">${renderReportBars(statusCounts, "label", "count", "#e5484d")}</div>
+      </div>
+      <div>
+        <p class="eyebrow">Relatos formais</p>
+        <h2>Denúncias e sinalizações</h2>
+        <div class="grid">${renderReportMetricCards([
+          { label: "Relatórios recebidos", value: reports.length },
+          { label: "Comentários em problemas", value: totalComments },
+          { label: "Curtidas em problemas", value: totalLikes },
+        ])}</div>
+      </div>
+    </section>
+
+    <section>
+      <p class="eyebrow">Mapa técnico</p>
+      <h2>Problemas por cidade/região e tipo</h2>
+      <p class="panel-note">Cruzamento entre território, categoria, volume de registros, urgência e engajamento.</p>
+      <div class="issue-grid">
+        ${topIssues.map((row) => `
+          <article class="issue-card">
+            <strong>${escapeHtml(row.city)}</strong>
+            <span>${escapeHtml(row.category)}</span>
+            <div class="issue-stats">
+              <div><small>Total</small><b>${row.count}</b></div>
+              <div><small>Abertos</small><b>${row.open}</b></div>
+              <div><small>Urgentes</small><b>${row.urgent}</b></div>
+              <div><small>Interações</small><b>${row.likes + row.comments}</b></div>
+            </div>
+          </article>
+        `).join("") || `<article class="issue-card"><strong>Nenhum problema mapeado</strong><span>Sem registros</span></article>`}
+      </div>
+    </section>
+
+    <section>
+      <p class="eyebrow">Detalhamento técnico</p>
+      <h2>Lista de problemas registrados</h2>
+      <p class="panel-note">Tabela para auditoria, triagem e encaminhamento administrativo.</p>
+      <table>
+        <thead>
+          <tr>
+            <th>Data</th>
+            <th>Região</th>
+            <th>Rua</th>
+            <th>Tipo</th>
+            <th>Status</th>
+            <th>Curtidas</th>
+            <th>Comentários</th>
+            <th>Autor</th>
+            <th>Descrição</th>
+          </tr>
+        </thead>
+        <tbody>${renderTechnicalProblemRows(problemPosts)}</tbody>
+      </table>
+    </section>
+
+    <p class="print-note">Nodus | Relatório gerado automaticamente. Abra no navegador e use imprimir para salvar em PDF.</p>
+  </main>
+</body>
+</html>`;
+
+  const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `nodus-relatorio-tecnico-df-${generatedAt.toISOString().slice(0, 10)}.html`;
   link.click();
   URL.revokeObjectURL(url);
 }
