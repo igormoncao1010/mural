@@ -54,6 +54,7 @@ export default function HomePage() {
   const [adminProfiles, setAdminProfiles] = useState([]);
   const [adminReports, setAdminReports] = useState([]);
   const [adminPosts, setAdminPosts] = useState([]);
+  const [candidatePages, setCandidatePages] = useState([]);
   const [candidateQuestions, setCandidateQuestions] = useState([]);
   const [notifications, setNotifications] = useState([]);
   const [follows, setFollows] = useState([]);
@@ -116,6 +117,7 @@ export default function HomePage() {
       setProfile(null);
       setPosts([]);
       setAdminPosts([]);
+      setCandidatePages([]);
       setCandidateQuestions([]);
       setNotifications([]);
       setFollows([]);
@@ -124,6 +126,7 @@ export default function HomePage() {
 
     loadProfile();
     loadDebates();
+    loadCandidatePages();
     loadPosts();
     loadCandidateQuestions();
     loadNotifications();
@@ -171,6 +174,7 @@ export default function HomePage() {
       clearTimeout(refreshTimer);
       refreshTimer = setTimeout(async () => {
         await loadDebates();
+        await loadCandidatePages();
         await loadPosts();
         await loadCandidateQuestions();
         if (isAdmin) await loadAdminData();
@@ -190,6 +194,7 @@ export default function HomePage() {
       })
       .on("postgres_changes", { event: "*", schema: "public", table: "reports" }, refreshEverything)
       .on("postgres_changes", { event: "*", schema: "public", table: "debates" }, refreshEverything)
+      .on("postgres_changes", { event: "*", schema: "public", table: "candidate_pages" }, refreshEverything)
       .on("postgres_changes", { event: "*", schema: "public", table: "candidate_questions" }, refreshEverything)
       .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, refreshEverything)
       .subscribe();
@@ -253,6 +258,16 @@ export default function HomePage() {
     if (!error && data?.length) {
       setDebates(data);
     }
+  }
+
+  async function loadCandidatePages() {
+    const { data, error } = await supabase
+      .from("candidate_pages")
+      .select("*")
+      .eq("status", "active")
+      .order("created_at", { ascending: true });
+
+    if (!error) setCandidatePages(data || []);
   }
 
   async function loadCandidateQuestions() {
@@ -698,6 +713,79 @@ export default function HomePage() {
     await loadCandidateQuestions();
   }
 
+  async function updateCandidateMedia(event, candidate) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    const profileAvatar = form.get("profile_avatar");
+    const storyImage = form.get("story_image");
+    const coverImage = form.get("cover_image");
+    const updates = {};
+
+    if (profileAvatar?.size) {
+      const path = createStoragePath(session.user.id, profileAvatar, "candidato-perfil");
+      const { error: uploadError } = await supabase.storage.from("avatars").upload(path, profileAvatar, { upsert: true });
+      if (uploadError) {
+        setMessage("Não foi possível atualizar a foto do perfil.");
+        return;
+      }
+      const avatarUrl = supabase.storage.from("avatars").getPublicUrl(path).data.publicUrl;
+      const nextProfile = {
+        ...profile,
+        id: session.user.id,
+        email: session.user.email,
+        name: profile?.name || candidate.name,
+        avatar_url: avatarUrl,
+      };
+      const { error: profileError } = await supabase.from("profiles").upsert(nextProfile);
+      if (profileError) {
+        setMessage(profileError.message);
+        return;
+      }
+      setProfile(nextProfile);
+      updates.profile_image_url = avatarUrl;
+    }
+
+    if (storyImage?.size) {
+      const path = createStoragePath(session.user.id, storyImage, "candidato-card");
+      const { error: uploadError } = await supabase.storage.from("candidate-images").upload(path, storyImage, { upsert: true });
+      if (uploadError) {
+        setMessage("Não foi possível atualizar a imagem do card.");
+        return;
+      }
+      updates.story_image_url = supabase.storage.from("candidate-images").getPublicUrl(path).data.publicUrl;
+    }
+
+    if (coverImage?.size) {
+      const path = createStoragePath(session.user.id, coverImage, "candidato-capa");
+      const { error: uploadError } = await supabase.storage.from("candidate-images").upload(path, coverImage, { upsert: true });
+      if (uploadError) {
+        setMessage("Não foi possível atualizar a capa do mural.");
+        return;
+      }
+      updates.cover_image_url = supabase.storage.from("candidate-images").getPublicUrl(path).data.publicUrl;
+    }
+
+    if (!Object.keys(updates).length) {
+      setMessage("Escolha ao menos uma imagem para atualizar.");
+      return;
+    }
+
+    const { error } = await supabase
+      .from("candidate_pages")
+      .update(updates)
+      .eq("slug", candidate.slug);
+
+    if (error) {
+      setMessage(error.message);
+      return;
+    }
+
+    event.currentTarget.reset();
+    setMessage("Imagens da candidata atualizadas.");
+    await loadProfile();
+    await loadCandidatePages();
+  }
+
   async function toggleLike(post) {
     const liked = post.likes?.some((like) => like.user_id === session.user.id);
 
@@ -970,7 +1058,20 @@ export default function HomePage() {
   const brasiliaUsers = adminProfiles.filter((person) =>
     /brasilia|df|samambaia|ceilandia|taguatinga|sobradinho|guara|gama|planaltina|recanto|riacho|paranoa|nucleo|brazlandia|cruzeiro|sudoeste|octogonal|aguas claras|vicente pires/i.test(person.neighborhood || "")
   ).length;
-  const currentCandidate = candidatePrompts.find((candidate) => candidate.slug === currentCandidateSlug) || candidatePrompts[0];
+  const candidateDirectory = candidatePrompts.map((candidate) => {
+    const savedCandidate = candidatePages.find((page) => page.slug === candidate.slug);
+    const storyImage = savedCandidate?.story_image_url || savedCandidate?.image_url || candidate.image;
+    const coverImage = savedCandidate?.cover_image_url || savedCandidate?.image_url || storyImage;
+    return {
+      ...candidate,
+      ...savedCandidate,
+      image: storyImage,
+      storyImage,
+      coverImage,
+      profileImage: savedCandidate?.profile_image_url || "",
+    };
+  });
+  const currentCandidate = candidateDirectory.find((candidate) => candidate.slug === currentCandidateSlug) || candidateDirectory[0];
   const currentCandidateQuestions = candidateQuestions.filter((question) => question.candidate_slug === currentCandidate.slug);
   const isCurrentCandidate = session?.user?.email?.toLowerCase() === currentCandidate.email.toLowerCase();
   const adminMetrics = [
@@ -1196,6 +1297,8 @@ export default function HomePage() {
             onAnswer={answerCandidateQuestion}
             onAsk={askCandidateQuestion}
             onBack={goToFeed}
+            onUpdateMedia={updateCandidateMedia}
+            profile={profile}
             questions={currentCandidateQuestions}
           />
         ) : activeView === "admin" && isAdmin ? (
@@ -1240,7 +1343,7 @@ export default function HomePage() {
                 </div>
               </header>
 
-              <CandidateStories onOpenCandidate={openCandidatePage} />
+              <CandidateStories candidates={candidateDirectory} onOpenCandidate={openCandidatePage} />
 
               <section className={composerOpen ? "composer open" : "composer compact"}>
                 {composerOpen ? (
@@ -1631,7 +1734,7 @@ function NotificationsPanel({ notifications }) {
   );
 }
 
-function CandidateStories({ onOpenCandidate }) {
+function CandidateStories({ candidates, onOpenCandidate }) {
   return (
     <section className="candidate-stories" aria-label="Pergunte ao candidato">
       <div className="section-heading compact-heading">
@@ -1642,9 +1745,9 @@ function CandidateStories({ onOpenCandidate }) {
       </div>
 
       <div className="candidate-story-row">
-        {candidatePrompts.map((candidate) => (
+        {candidates.map((candidate) => (
           <button className="candidate-story-card" key={candidate.name} onClick={() => onOpenCandidate(candidate)} type="button">
-            <img alt={`Foto modelo de ${candidate.name}`} src={candidate.image} />
+            <img alt={`Foto de ${candidate.name}`} src={candidate.storyImage || candidate.image} />
             <span className="candidate-story-ring" />
             <div>
               <strong>{candidate.name}</strong>
@@ -1657,7 +1760,7 @@ function CandidateStories({ onOpenCandidate }) {
   );
 }
 
-function CandidateQuestionView({ candidate, isCandidate, onAnswer, onAsk, onBack, questions }) {
+function CandidateQuestionView({ candidate, isCandidate, onAnswer, onAsk, onBack, onUpdateMedia, profile, questions }) {
   const answeredQuestions = questions.filter((question) => question.answer);
   const pendingQuestions = questions.filter((question) => !question.answer);
   const topicCounts = candidateQuestionTopics.map((topic) => ({
@@ -1670,7 +1773,7 @@ function CandidateQuestionView({ candidate, isCandidate, onAnswer, onAsk, onBack
       <button className="ghost-button profile-back-button" onClick={onBack} type="button">Voltar ao feed</button>
 
       <header className="candidate-hero">
-        <img alt={`Foto de ${candidate.name}`} src={candidate.image} />
+        <img alt={`Capa de ${candidate.name}`} src={candidate.coverImage || candidate.storyImage || candidate.image} />
         <div>
           <p className="eyebrow">Pergunte ao candidato</p>
           <h1>{candidate.name}</h1>
@@ -1693,6 +1796,44 @@ function CandidateQuestionView({ candidate, isCandidate, onAnswer, onAsk, onBack
           <span>aguardando</span>
         </article>
       </div>
+
+      {isCandidate && (
+        <section className="candidate-media-panel">
+          <div className="panel-title">
+            <h2>Imagens da candidata</h2>
+            <small>Atualize a foto do perfil, o card do feed e a capa do mural.</small>
+          </div>
+          <div className="candidate-media-preview">
+            <div>
+              <Avatar profile={{ ...profile, avatar_url: profile?.avatar_url || candidate.profileImage }} />
+              <span>Perfil</span>
+            </div>
+            <div>
+              <img alt="Prévia do card" src={candidate.storyImage || candidate.image} />
+              <span>Card do feed</span>
+            </div>
+            <div>
+              <img alt="Prévia da capa" src={candidate.coverImage || candidate.storyImage || candidate.image} />
+              <span>Capa do mural</span>
+            </div>
+          </div>
+          <form className="candidate-media-form" onSubmit={(event) => onUpdateMedia(event, candidate)}>
+            <label>
+              Foto do perfil
+              <input accept="image/*" name="profile_avatar" type="file" />
+            </label>
+            <label>
+              Foto do card no feed
+              <input accept="image/*" name="story_image" type="file" />
+            </label>
+            <label>
+              Foto da capa do mural
+              <input accept="image/*" name="cover_image" type="file" />
+            </label>
+            <button className="primary-button" type="submit">Salvar imagens</button>
+          </form>
+        </section>
+      )}
 
       <section className="candidate-question-box">
         <div className="panel-title">

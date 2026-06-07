@@ -107,10 +107,17 @@ create table if not exists public.candidate_pages (
   role text default '',
   bio text default '',
   image_url text default '',
+  profile_image_url text default '',
+  story_image_url text default '',
+  cover_image_url text default '',
   status text default 'active',
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );
+
+alter table public.candidate_pages add column if not exists profile_image_url text default '';
+alter table public.candidate_pages add column if not exists story_image_url text default '';
+alter table public.candidate_pages add column if not exists cover_image_url text default '';
 
 create table if not exists public.candidate_questions (
   id uuid primary key default gen_random_uuid(),
@@ -378,6 +385,13 @@ to authenticated
 using (public.is_admin())
 with check (public.is_admin());
 
+drop policy if exists "candidates can update their candidate page media" on public.candidate_pages;
+create policy "candidates can update their candidate page media"
+on public.candidate_pages for update
+to authenticated
+using (lower(email) = lower(auth.jwt() ->> 'email'))
+with check (lower(email) = lower(auth.jwt() ->> 'email'));
+
 drop policy if exists "candidate questions are visible" on public.candidate_questions;
 create policy "candidate questions are visible"
 on public.candidate_questions for select
@@ -431,7 +445,7 @@ set title = excluded.title,
     description = excluded.description,
     status = excluded.status;
 
-insert into public.candidate_pages (slug, name, email, role, bio, image_url, status)
+insert into public.candidate_pages (slug, name, email, role, bio, image_url, story_image_url, cover_image_url, status)
 values
   (
     'ana-martins',
@@ -440,6 +454,8 @@ values
     'Educação',
     'Pré-candidata focada em educação, comunidade e escuta pública.',
     'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=900&q=85',
+    'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=420&q=80',
+    'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=1200&q=85',
     'active'
   ),
   (
@@ -449,6 +465,8 @@ values
     'Infraestrutura',
     'Perguntas sobre obras, ruas, iluminação e zeladoria urbana.',
     'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=900&q=85',
+    'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=420&q=80',
+    'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=1200&q=85',
     'active'
   ),
   (
@@ -458,6 +476,8 @@ values
     'Saúde',
     'Debate público sobre atendimento, filas e prevenção.',
     'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=900&q=85',
+    'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=420&q=80',
+    'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=1200&q=85',
     'active'
   ),
   (
@@ -467,6 +487,8 @@ values
     'Mobilidade',
     'Transporte, acessibilidade, trânsito e deslocamento.',
     'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=900&q=85',
+    'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=420&q=80',
+    'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=1200&q=85',
     'active'
   ),
   (
@@ -476,6 +498,8 @@ values
     'Segurança',
     'Iluminação, rondas, prevenção e pontos de risco.',
     'https://images.unsplash.com/photo-1598550874175-4d0ef436c909?auto=format&fit=crop&w=900&q=85',
+    'https://images.unsplash.com/photo-1598550874175-4d0ef436c909?auto=format&fit=crop&w=420&q=80',
+    'https://images.unsplash.com/photo-1598550874175-4d0ef436c909?auto=format&fit=crop&w=1200&q=85',
     'active'
   ),
   (
@@ -485,6 +509,8 @@ values
     'Juventude',
     'Projetos para juventude, esporte e oportunidade.',
     'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=900&q=85',
+    'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=420&q=80',
+    'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=1200&q=85',
     'active'
   ),
   (
@@ -494,6 +520,8 @@ values
     'Cultura',
     'Cultura, periferia, economia criativa e participação.',
     'https://images.unsplash.com/photo-1551836022-d5d88e9218df?auto=format&fit=crop&w=900&q=85',
+    'https://images.unsplash.com/photo-1551836022-d5d88e9218df?auto=format&fit=crop&w=420&q=80',
+    'https://images.unsplash.com/photo-1551836022-d5d88e9218df?auto=format&fit=crop&w=1200&q=85',
     'active'
   ),
   (
@@ -503,6 +531,8 @@ values
     'Trabalho',
     'Emprego, renda, formação e empreendedorismo local.',
     'https://images.unsplash.com/photo-1568602471122-7832951cc4c5?auto=format&fit=crop&w=900&q=85',
+    'https://images.unsplash.com/photo-1568602471122-7832951cc4c5?auto=format&fit=crop&w=420&q=80',
+    'https://images.unsplash.com/photo-1568602471122-7832951cc4c5?auto=format&fit=crop&w=1200&q=85',
     'active'
   ),
   (
@@ -512,6 +542,8 @@ values
     'Meio ambiente',
     'Sustentabilidade, parques, lixo e cuidado urbano.',
     'https://images.unsplash.com/photo-1607746882042-944635dfe10e?auto=format&fit=crop&w=900&q=85',
+    'https://images.unsplash.com/photo-1607746882042-944635dfe10e?auto=format&fit=crop&w=420&q=80',
+    'https://images.unsplash.com/photo-1607746882042-944635dfe10e?auto=format&fit=crop&w=1200&q=85',
     'active'
   ),
   (
@@ -521,6 +553,8 @@ values
     'Comunidade',
     'Demandas locais, liderança comunitária e prioridades.',
     'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=900&q=85',
+    'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=420&q=80',
+    'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=1200&q=85',
     'active'
   )
 on conflict (slug) do update
@@ -529,6 +563,8 @@ set name = excluded.name,
     role = excluded.role,
     bio = excluded.bio,
     image_url = excluded.image_url,
+    story_image_url = excluded.story_image_url,
+    cover_image_url = excluded.cover_image_url,
     status = excluded.status;
 
 insert into storage.buckets (id, name, public)
@@ -537,6 +573,10 @@ on conflict (id) do nothing;
 
 insert into storage.buckets (id, name, public)
 values ('post-images', 'post-images', true)
+on conflict (id) do nothing;
+
+insert into storage.buckets (id, name, public)
+values ('candidate-images', 'candidate-images', true)
 on conflict (id) do nothing;
 
 drop policy if exists "authenticated users can upload avatars" on storage.objects;
@@ -562,6 +602,18 @@ create policy "post images are public"
 on storage.objects for select
 to public
 using (bucket_id = 'post-images');
+
+drop policy if exists "authenticated users can upload candidate images" on storage.objects;
+create policy "authenticated users can upload candidate images"
+on storage.objects for insert
+to authenticated
+with check (bucket_id = 'candidate-images');
+
+drop policy if exists "candidate images are public" on storage.objects;
+create policy "candidate images are public"
+on storage.objects for select
+to public
+using (bucket_id = 'candidate-images');
 
 do $$
 begin
@@ -599,5 +651,9 @@ begin
 
   if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'candidate_questions') then
     alter publication supabase_realtime add table public.candidate_questions;
+  end if;
+
+  if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'candidate_pages') then
+    alter publication supabase_realtime add table public.candidate_pages;
   end if;
 end $$;
