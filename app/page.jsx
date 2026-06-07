@@ -1,28 +1,28 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import { getSupabase } from "../lib/supabase";
 
 const defaultDebates = [
-  { id: "infraestrutura", slug: "infraestrutura", title: "Infraestrutura", description: "Ruas, calÃ§adas, iluminaÃ§Ã£o e obras." },
-  { id: "saude", slug: "saude", title: "SaÃºde", description: "Atendimento, filas, unidades e prevenÃ§Ã£o." },
-  { id: "educacao", slug: "educacao", title: "EducaÃ§Ã£o", description: "Escolas, creches, transporte e aprendizagem." },
-  { id: "seguranca", slug: "seguranca", title: "SeguranÃ§a", description: "IluminaÃ§Ã£o, rondas e pontos de risco." },
-  { id: "mobilidade", slug: "mobilidade", title: "Mobilidade", description: "Transporte, acessibilidade e trÃ¢nsito." },
+  { id: "infraestrutura", slug: "infraestrutura", title: "Infraestrutura", description: "Ruas, calçadas, iluminação e obras." },
+  { id: "saude", slug: "saude", title: "Saúde", description: "Atendimento, filas, unidades e prevenção." },
+  { id: "educacao", slug: "educacao", title: "Educação", description: "Escolas, creches, transporte e aprendizagem." },
+  { id: "seguranca", slug: "seguranca", title: "Segurança", description: "Iluminação, rondas e pontos de risco." },
+  { id: "mobilidade", slug: "mobilidade", title: "Mobilidade", description: "Transporte, acessibilidade e trânsito." },
 ];
 
 const allTopic = { id: "all", slug: "all", title: "Todos", description: "Todos os debates ativos." };
 const postCategories = [
   { value: "problema", label: "Problema" },
-  { value: "sugestao", label: "SugestÃ£o" },
-  { value: "denuncia", label: "DenÃºncia" },
+  { value: "sugestao", label: "Sugestão" },
+  { value: "denuncia", label: "Denúncia" },
   { value: "elogio", label: "Elogio" },
   { value: "debate", label: "Debate" },
   { value: "urgente", label: "Urgente" },
 ];
 const issueStatuses = [
   { value: "aberto", label: "Aberto" },
-  { value: "analise", label: "Em anÃ¡lise" },
+  { value: "analise", label: "Em análise" },
   { value: "encaminhado", label: "Encaminhado" },
   { value: "resolvido", label: "Resolvido" },
 ];
@@ -380,7 +380,7 @@ export default function HomePage() {
 
       setMessage(
         data.session
-          ? "Conta criada. VocÃª jÃ¡ pode usar o feed."
+          ? "Conta criada. Você já pode usar o feed."
           : "Conta criada. Verifique seu email para confirmar o cadastro."
       );
     } else {
@@ -469,7 +469,7 @@ export default function HomePage() {
     let imageUrl = "";
 
     setPosting(true);
-    setPostStatus("Preparando publicaÃ§Ã£o...");
+    setPostStatus("Preparando publicação...");
     setPostProgress(14);
 
     if (postImageFile?.size) {
@@ -588,7 +588,7 @@ export default function HomePage() {
       setMessage("Compartilhamento registrado.");
       await loadPosts();
     } catch {
-      setMessage("NÃ£o foi possÃ­vel compartilhar agora.");
+      setMessage("Não foi possível compartilhar agora.");
     }
   }
 
@@ -616,12 +616,12 @@ export default function HomePage() {
     setCommentDrafts((drafts) => ({ ...drafts, [postId]: "" }));
     await createNotification({ recipientId: post?.user_id, type: "comment", postId, commentId: data?.id });
     setActiveCommentPostId(postId);
-    setMessage("ComentÃ¡rio enviado.");
+    setMessage("Comentário enviado.");
     await loadPosts();
   }
 
   async function reportContent({ postId, commentId }) {
-    const reason = window.prompt("Qual problema vocÃª quer relatar?");
+    const reason = window.prompt("Qual problema você quer relatar?");
     if (!reason?.trim()) return;
 
     const { error } = await supabase.from("reports").insert({
@@ -636,13 +636,13 @@ export default function HomePage() {
       return;
     }
 
-    setMessage("RelatÃ³rio enviado para o administrador.");
+    setMessage("Relatório enviado para o administrador.");
     if (isAdmin) await loadAdminData();
   }
 
   async function deletePost(post) {
     if (!canDeletePost(post)) return;
-    const confirmed = window.confirm("Excluir esta publicaÃ§Ã£o?");
+    const confirmed = window.confirm("Excluir esta publicação?");
     if (!confirmed) return;
 
     const { error } = await supabase.from("posts").delete().eq("id", post.id);
@@ -651,14 +651,14 @@ export default function HomePage() {
       return;
     }
 
-    setMessage("PublicaÃ§Ã£o excluÃ­da.");
+    setMessage("Publicação excluída.");
     await loadPosts();
     if (isAdmin) await loadAdminData();
   }
 
   async function deleteComment(comment) {
     if (!canDeleteComment(comment)) return;
-    const confirmed = window.confirm("Excluir este comentÃ¡rio?");
+    const confirmed = window.confirm("Excluir este comentário?");
     if (!confirmed) return;
 
     const { error } = await supabase.from("comments").delete().eq("id", comment.id);
@@ -667,14 +667,14 @@ export default function HomePage() {
       return;
     }
 
-    setMessage("ComentÃ¡rio excluÃ­do.");
+    setMessage("Comentário excluído.");
     await loadPosts();
     if (isAdmin) await loadAdminData();
   }
 
   async function deleteProfile(person) {
     if (!isAdmin || person.id === session.user.id) return;
-    const confirmed = window.confirm(`Excluir o perfil de ${person.name || person.email}? Isso tambÃ©m remove posts e comentÃ¡rios desse perfil.`);
+    const confirmed = window.confirm(`Excluir o perfil de ${person.name || person.email}? Isso também remove posts e comentários desse perfil.`);
     if (!confirmed) return;
 
     const { error } = await supabase.from("profiles").delete().eq("id", person.id);
@@ -683,7 +683,7 @@ export default function HomePage() {
       return;
     }
 
-    setMessage("Perfil excluÃ­do da plataforma.");
+    setMessage("Perfil excluído da plataforma.");
     await loadPosts();
     await loadAdminData();
   }
@@ -694,14 +694,14 @@ export default function HomePage() {
 
     if (following) {
       await supabase.from("follows").delete().eq("follower_id", session.user.id).eq("following_id", personId);
-      setMessage("VocÃª deixou de acompanhar este perfil.");
+      setMessage("Você deixou de acompanhar este perfil.");
     } else {
       const { error } = await supabase.from("follows").insert({ follower_id: session.user.id, following_id: personId });
       if (error) {
         setMessage(error.message);
         return;
       }
-      setMessage("Agora vocÃª acompanha este perfil.");
+      setMessage("Agora você acompanha este perfil.");
     }
 
     await loadFollows();
@@ -753,7 +753,7 @@ export default function HomePage() {
       return;
     }
 
-    setMessage("InsÃ­gnia atualizada.");
+    setMessage("Insígnia atualizada.");
     await loadAdminData();
     await loadPosts();
   }
@@ -813,7 +813,7 @@ export default function HomePage() {
   }));
   const regionCounts = Object.values(
     posts.reduce((items, post) => {
-      const region = post.neighborhood || "RegiÃ£o nÃ£o informada";
+      const region = post.neighborhood || "Região não informada";
       if (!items[region]) items[region] = { region, count: 0, urgent: 0, open: 0 };
       items[region].count += 1;
       if (post.category === "urgente") items[region].urgent += 1;
@@ -830,11 +830,11 @@ export default function HomePage() {
   ).length;
   const adminMetrics = [
     { label: "Cadastros", value: adminProfiles.length },
-    { label: "UsuÃ¡rios BrasÃ­lia", value: brasiliaUsers || adminProfiles.length },
-    { label: "PublicaÃ§Ãµes", value: posts.length },
-    { label: "ComentÃ¡rios", value: totalComments },
+    { label: "Usuários Brasília", value: brasiliaUsers || adminProfiles.length },
+    { label: "Publicações", value: posts.length },
+    { label: "Comentários", value: totalComments },
     { label: "Curtidas", value: totalLikes },
-    { label: "RelatÃ³rios", value: adminReports.length },
+    { label: "Relatórios", value: adminReports.length },
     { label: "Debates ativos", value: activeDebates.length },
   ];
 
@@ -842,7 +842,7 @@ export default function HomePage() {
     return (
       <main className="setup-screen">
         <section className="setup-card">
-          <p className="eyebrow">ConfiguraÃ§Ã£o pendente</p>
+          <p className="eyebrow">Configuração pendente</p>
           <h1>Adicione as chaves do Supabase para ativar o Nodus.</h1>
           <p>Copie `.env.example` para `.env.local` e preencha `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_ANON_KEY`.</p>
         </section>
@@ -866,7 +866,7 @@ export default function HomePage() {
             <button className={authMode === "login" ? "active" : ""} onClick={() => setAuthMode("login")} type="button">Login</button>
             <button className={authMode === "register" ? "active" : ""} onClick={() => setAuthMode("register")} type="button">Cadastro</button>
           </div>
-          {authMode === "register" && <input name="name" placeholder="Nome pÃºblico" required />}
+          {authMode === "register" && <input name="name" placeholder="Nome público" required />}
           <input name="email" placeholder={authMode === "login" ? "Email ou admin" : "Email"} required type={authMode === "login" ? "text" : "email"} />
           <input minLength={6} name="password" placeholder="Senha" required type="password" />
           <button className="primary-button" type="submit">{authMode === "login" ? "Entrar" : "Criar conta"}</button>
@@ -887,7 +887,7 @@ export default function HomePage() {
           </div>
         </div>
 
-        <nav className="side-nav" aria-label="NavegaÃ§Ã£o principal">
+        <nav className="side-nav" aria-label="Navegação principal">
           <button className={activeView === "feed" ? "side-nav-item active" : "side-nav-item"} onClick={goToFeed} type="button">Feed</button>
           <button className={activeView === "debates" ? "side-nav-item active" : "side-nav-item"} onClick={() => setActiveView("debates")} type="button">Debates</button>
           <button className={activeView === "about" ? "side-nav-item active" : "side-nav-item"} onClick={() => setActiveView("about")} type="button">Sobre</button>
@@ -897,7 +897,7 @@ export default function HomePage() {
           )}
         </nav>
 
-        <button className="mobile-settings-button" onClick={() => setShowProfileSettings((open) => !open)} title="ConfiguraÃ§Ãµes do perfil" type="button">{"\u2699"}</button>
+        <button className="mobile-settings-button" onClick={() => setShowProfileSettings((open) => !open)} title="Configurações do perfil" type="button">{"\u2699"}</button>
 
         <div className="profile-chip">
           <Avatar profile={profile} />
@@ -905,7 +905,7 @@ export default function HomePage() {
             <strong>{profile?.name || session.user.email}</strong>
             <small>{profile?.neighborhood || "Perfil sem bairro"}</small>
           </div>
-          <button className="icon-button" onClick={() => setShowProfileSettings((open) => !open)} title="ConfiguraÃ§Ãµes do perfil" type="button">{"\u2699"}</button>
+          <button className="icon-button" onClick={() => setShowProfileSettings((open) => !open)} title="Configurações do perfil" type="button">{"\u2699"}</button>
         </div>
 
         <div className="alerts-block">
@@ -926,7 +926,7 @@ export default function HomePage() {
         <div className="sidebar-stats">
           <span><strong>{posts.length}</strong> posts</span>
           <span><strong>{userPosts}</strong> seus posts</span>
-          <span><strong>{userComments}</strong> comentÃ¡rios</span>
+          <span><strong>{userComments}</strong> comentários</span>
         </div>
 
         <button className="ghost-button logout-button" onClick={signOut} type="button">Sair</button>
@@ -938,13 +938,13 @@ export default function HomePage() {
         {showProfileSettings && (
           <section className="profile-editor mobile-profile-editor">
             <div className="panel-title">
-              <h2>ConfiguraÃ§Ãµes</h2>
+              <h2>Configurações</h2>
               <Avatar profile={profile} />
             </div>
             <form onSubmit={updateProfile}>
-              <input defaultValue={profile?.name || ""} name="name" placeholder="Nome pÃºblico" required />
-              <input defaultValue={profile?.neighborhood || ""} name="neighborhood" placeholder="Bairro / regiÃ£o" />
-              <input defaultValue={profile?.contact || ""} name="contact" placeholder="Contato pÃºblico" />
+              <input defaultValue={profile?.name || ""} name="name" placeholder="Nome público" required />
+              <input defaultValue={profile?.neighborhood || ""} name="neighborhood" placeholder="Bairro / região" />
+              <input defaultValue={profile?.contact || ""} name="contact" placeholder="Contato público" />
               <textarea defaultValue={profile?.bio || ""} name="bio" placeholder="Bio curta" />
               <label className="upload-line">
                 Foto de perfil
@@ -1028,7 +1028,7 @@ export default function HomePage() {
                   <h1 className="feed-title">Feed</h1>
                 </div>
                 <button className="compose-toggle" onClick={() => setComposerOpen((open) => !open)} type="button">
-                  {composerOpen ? "Fechar publicaÃ§Ã£o" : "Nova publicaÃ§Ã£o"}
+                  {composerOpen ? "Fechar publicação" : "Nova publicação"}
                 </button>
                 <div className="feed-search">
                   <input onChange={(event) => setQuery(event.target.value)} placeholder="Buscar rua, bairro ou assunto" />
@@ -1085,7 +1085,7 @@ export default function HomePage() {
                         <Avatar profile={profile} />
                         <div>
                           <strong>{profile?.name || "Morador"}</strong>
-                          <small>{postDraft.street || "Rua nÃ£o informada"} {postDraft.neighborhood ? `- ${postDraft.neighborhood}` : ""}</small>
+                          <small>{postDraft.street || "Rua não informada"} {postDraft.neighborhood ? `- ${postDraft.neighborhood}` : ""}</small>
                         </div>
                         <span>{categoryLabel(postDraft.category)} / {topicLabel(postDraft.topic, activeDebates)}</span>
                       </div>
@@ -1139,7 +1139,7 @@ export default function HomePage() {
                           <Avatar profile={post.author} />
                           <div>
                           <strong>{post.author?.name || "Morador"}</strong>
-                          <small>{post.street || "Rua nÃ£o informada"} {post.neighborhood ? `- ${post.neighborhood}` : ""}</small>
+                          <small>{post.street || "Rua não informada"} {post.neighborhood ? `- ${post.neighborhood}` : ""}</small>
                             <Badge profile={post.author} />
                           </div>
                         </button>
@@ -1152,7 +1152,7 @@ export default function HomePage() {
                       <div className="post-meta-row">
                         <span>{categoryLabel(post.category)}</span>
                         <span>{statusLabel(post.issue_status)}</span>
-                        <button onClick={() => openPost(post.id)} type="button">Abrir publicaÃ§Ã£o</button>
+                        <button onClick={() => openPost(post.id)} type="button">Abrir publicação</button>
                       </div>
 
                       <p className="post-text">{post.body}</p>
@@ -1169,7 +1169,7 @@ export default function HomePage() {
                           <HeartIcon filled={liked} />
                           <span>{post.likes?.length || 0}</span>
                         </button>
-                        <button className="action-button" onClick={() => setActiveCommentPostId(commentsOpen ? null : post.id)} title={commentsOpen ? "Ocultar comentÃ¡rios" : "Ver comentÃ¡rios"} type="button">
+                        <button className="action-button" onClick={() => setActiveCommentPostId(commentsOpen ? null : post.id)} title={commentsOpen ? "Ocultar comentários" : "Ver comentários"} type="button">
                           <CommentIcon />
                           <span>{post.comments?.length || 0}</span>
                         </button>
@@ -1183,7 +1183,7 @@ export default function HomePage() {
                       {commentsOpen && (
                         <>
                           <div className="comments">
-                            {(post.comments || []).length === 0 && <p className="empty-comments">Ainda nÃ£o hÃ¡ comentÃ¡rios.</p>}
+                            {(post.comments || []).length === 0 && <p className="empty-comments">Ainda não há comentários.</p>}
                             {(post.comments || []).map((comment) => (
                               <div className="comment" key={comment.id}>
                                 <button className="comment-avatar-button" onClick={() => openPublicProfile(comment.commenter, comment.user_id)} type="button">
@@ -1213,7 +1213,7 @@ export default function HomePage() {
                             <input
                               name="comment"
                               onChange={(event) => setCommentDrafts((drafts) => ({ ...drafts, [post.id]: event.target.value }))}
-                              placeholder="Escreva um comentÃ¡rio"
+                              placeholder="Escreva um comentário"
                               value={commentDrafts[post.id] || ""}
                             />
                             <button type="submit">Enviar</button>
@@ -1230,13 +1230,13 @@ export default function HomePage() {
               {showProfileSettings && (
                 <section className="profile-editor">
                   <div className="panel-title">
-                    <h2>ConfiguraÃ§Ãµes</h2>
+                    <h2>Configurações</h2>
                     <Avatar profile={profile} />
                   </div>
                   <form onSubmit={updateProfile}>
-                    <input defaultValue={profile?.name || ""} name="name" placeholder="Nome pÃºblico" required />
-                    <input defaultValue={profile?.neighborhood || ""} name="neighborhood" placeholder="Bairro / regiÃ£o" />
-                    <input defaultValue={profile?.contact || ""} name="contact" placeholder="Contato pÃºblico" />
+                    <input defaultValue={profile?.name || ""} name="name" placeholder="Nome público" required />
+                    <input defaultValue={profile?.neighborhood || ""} name="neighborhood" placeholder="Bairro / região" />
+                    <input defaultValue={profile?.contact || ""} name="contact" placeholder="Contato público" />
                     <textarea defaultValue={profile?.bio || ""} name="bio" placeholder="Bio curta" />
                     <label className="upload-line">
                       Foto de perfil
@@ -1268,7 +1268,7 @@ export default function HomePage() {
                       <strong>{region.open} abertos</strong>
                     </div>
                   ))}
-                  {regionCounts.length === 0 && <div className="topic-item read-only"><span>Nenhuma regiÃ£o ainda</span><strong>0</strong></div>}
+                  {regionCounts.length === 0 && <div className="topic-item read-only"><span>Nenhuma região ainda</span><strong>0</strong></div>}
                 </div>
               </section>
 
@@ -1321,8 +1321,8 @@ function PostDetailView({ commentDrafts, debates, isAdmin, onBack, onComment, on
       <section className="view-panel">
         <button className="ghost-button profile-back-button" onClick={onBack} type="button">Voltar ao feed</button>
         <article className="empty-feed">
-          <strong>PublicaÃ§Ã£o nÃ£o encontrada.</strong>
-          <span>Ela pode ter sido removida ou ainda nÃ£o carregou.</span>
+          <strong>Publicação não encontrada.</strong>
+          <span>Ela pode ter sido removida ou ainda não carregou.</span>
         </article>
       </section>
     );
@@ -1340,7 +1340,7 @@ function PostDetailView({ commentDrafts, debates, isAdmin, onBack, onComment, on
             <Avatar profile={post.author} />
             <div>
               <strong>{post.author?.name || "Morador"}</strong>
-              <small>{post.street || "Rua nÃ£o informada"} {post.neighborhood ? `- ${post.neighborhood}` : ""}</small>
+              <small>{post.street || "Rua não informada"} {post.neighborhood ? `- ${post.neighborhood}` : ""}</small>
               <Badge profile={post.author} />
             </div>
           </button>
@@ -1372,7 +1372,7 @@ function PostDetailView({ commentDrafts, debates, isAdmin, onBack, onComment, on
               {issueStatuses.map((status) => <option key={status.value} value={status.value}>{status.label}</option>)}
             </select>
             <textarea defaultValue={post.admin_response || ""} name="admin_response" placeholder="Resposta oficial da equipe" />
-            <button className="primary-button" type="submit">Salvar moderaÃ§Ã£o</button>
+            <button className="primary-button" type="submit">Salvar moderação</button>
           </form>
         )}
         <div className="comments">
@@ -1393,8 +1393,8 @@ function PostDetailView({ commentDrafts, debates, isAdmin, onBack, onComment, on
           ))}
         </div>
         <form className="comment-form" onSubmit={(event) => onComment(event, post.id)}>
-          <Avatar profile={{ name: "VocÃª" }} />
-          <input name="comment" onChange={(event) => setCommentDrafts((drafts) => ({ ...drafts, [post.id]: event.target.value }))} placeholder="Escreva um comentÃ¡rio" value={commentDrafts[post.id] || ""} />
+          <Avatar profile={{ name: "Você" }} />
+          <input name="comment" onChange={(event) => setCommentDrafts((drafts) => ({ ...drafts, [post.id]: event.target.value }))} placeholder="Escreva um comentário" value={commentDrafts[post.id] || ""} />
           <button type="submit">Enviar</button>
         </form>
       </article>
@@ -1406,12 +1406,12 @@ function AboutView() {
   return (
     <section className="view-panel text-page">
       <p className="eyebrow">Nodus</p>
-      <h1>Fluxo da InformaÃ§Ã£o local.</h1>
-      <p>O Nodus organiza relatos, ideias e debates da comunidade em um feed social simples: moradores publicam fotos das ruas, categorizam problemas, acompanham status e ajudam a priorizar o que precisa de atenÃ§Ã£o.</p>
+      <h1>Fluxo da Informação local.</h1>
+      <p>O Nodus organiza relatos, ideias e debates da comunidade em um feed social simples: moradores publicam fotos das ruas, categorizam problemas, acompanham status e ajudam a priorizar o que precisa de atenção.</p>
       <div className="feature-grid">
-        <article><strong>ParticipaÃ§Ã£o</strong><span>Posts, comentÃ¡rios, curtidas e debates por bairro.</span></article>
-        <article><strong>Acompanhamento</strong><span>Status como aberto, em anÃ¡lise, encaminhado e resolvido.</span></article>
-        <article><strong>GestÃ£o</strong><span>Dashboard para moderaÃ§Ã£o, relatÃ³rios, leads e resposta oficial.</span></article>
+        <article><strong>Participação</strong><span>Posts, comentários, curtidas e debates por bairro.</span></article>
+        <article><strong>Acompanhamento</strong><span>Status como aberto, em análise, encaminhado e resolvido.</span></article>
+        <article><strong>Gestão</strong><span>Dashboard para moderação, relatórios, leads e resposta oficial.</span></article>
       </div>
     </section>
   );
@@ -1422,11 +1422,11 @@ function TermsView() {
     <section className="view-panel text-page">
       <p className="eyebrow">Regras</p>
       <h1>Termos de uso e privacidade.</h1>
-      <p>Use o Nodus para publicar informaÃ§Ãµes reais, respeitosas e Ãºteis para a comunidade. Evite exposiÃ§Ã£o indevida de pessoas, ataques pessoais, dados sensÃ­veis e conteÃºdo ilegal.</p>
+      <p>Use o Nodus para publicar informações reais, respeitosas e úteis para a comunidade. Evite exposição indevida de pessoas, ataques pessoais, dados sensíveis e conteúdo ilegal.</p>
       <div className="feature-grid">
-        <article><strong>Dados</strong><span>Nome, email, bairro, contato e publicaÃ§Ãµes podem ser usados para gestÃ£o da plataforma.</span></article>
-        <article><strong>ModeraÃ§Ã£o</strong><span>Administradores podem remover posts, comentÃ¡rios e perfis que violem as regras.</span></article>
-        <article><strong>Consentimento</strong><span>Listas de contatos devem ser usadas com autorizaÃ§Ã£o e respeito Ã  LGPD.</span></article>
+        <article><strong>Dados</strong><span>Nome, email, bairro, contato e publicações podem ser usados para gestão da plataforma.</span></article>
+        <article><strong>Moderação</strong><span>Administradores podem remover posts, comentários e perfis que violem as regras.</span></article>
+        <article><strong>Consentimento</strong><span>Listas de contatos devem ser usadas com autorização e respeito à LGPD.</span></article>
       </div>
     </section>
   );
@@ -1436,20 +1436,20 @@ function NotificationsPanel({ notifications }) {
   return (
     <section className="alerts-panel">
       <div className="alerts-title">
-        <strong>NotificaÃ§Ãµes</strong>
+        <strong>Notificações</strong>
         <span>{notifications.length}</span>
       </div>
       {notifications.length === 0 ? (
-        <p className="empty-alerts">Nenhuma notificaÃ§Ã£o ainda.</p>
+        <p className="empty-alerts">Nenhuma notificação ainda.</p>
       ) : (
         <div className="alerts-list">
           {notifications.map((item) => (
             <article className={item.read_at ? "alert-item" : "alert-item unread"} key={item.id}>
               <Avatar profile={item.actor} />
               <div>
-                <strong>{item.actor?.name || "AlguÃ©m"}</strong>
+                <strong>{item.actor?.name || "Alguém"}</strong>
                 <p>{notificationText(item.type)}</p>
-                <small>{item.post?.street || item.post?.body || "PublicaÃ§Ã£o do feed"}</small>
+                <small>{item.post?.street || item.post?.body || "Publicação do feed"}</small>
               </div>
             </article>
           ))}
@@ -1517,14 +1517,14 @@ function PublicProfileView({ debates, follows, onBack, onFollow, posts, postsAll
       </section>
       <section className="public-profile-posts">
         <div className="section-heading">
-          <h2>ConteÃºdo postado</h2>
+          <h2>Conteúdo postado</h2>
           <span>{posts.length} no feed</span>
         </div>
 
         {posts.length === 0 ? (
           <article className="empty-feed">
-            <strong>Nenhuma publicaÃ§Ã£o ainda.</strong>
-            <span>Quando esta pessoa postar, o conteÃºdo aparecerÃ¡ aqui.</span>
+            <strong>Nenhuma publicação ainda.</strong>
+            <span>Quando esta pessoa postar, o conteúdo aparecerá aqui.</span>
           </article>
         ) : (
           <div className="profile-post-grid">
@@ -1539,7 +1539,7 @@ function PublicProfileView({ debates, follows, onBack, onFollow, posts, postsAll
                   <strong>{categoryLabel(post.category)} / {topicLabel(post.topic, debates)}</strong>
                   <p>{post.body}</p>
                   <small>{statusLabel(post.issue_status)}</small>
-                  <small>{post.street || "Rua nÃ£o informada"} {post.neighborhood ? `- ${post.neighborhood}` : ""}</small>
+                  <small>{post.street || "Rua não informada"} {post.neighborhood ? `- ${post.neighborhood}` : ""}</small>
                 </div>
               </article>
             ))}
@@ -1561,7 +1561,7 @@ function DebatesView({ debates, isAdmin, onCreateDebate, onSelectDebate, posts }
       {isAdmin && (
         <form className="admin-form" onSubmit={onCreateDebate}>
           <input name="title" placeholder="Novo debate" required />
-          <input name="description" placeholder="DescriÃ§Ã£o curta" />
+          <input name="description" placeholder="Descrição curta" />
           <button className="primary-button" type="submit">Criar debate</button>
         </form>
       )}
@@ -1571,7 +1571,7 @@ function DebatesView({ debates, isAdmin, onCreateDebate, onSelectDebate, posts }
           <article className="debate-card" key={debate.slug}>
             <div>
               <h2>{debate.title}</h2>
-              <p>{debate.description || "Debate aberto pelo administrador da pÃ¡gina."}</p>
+              <p>{debate.description || "Debate aberto pelo administrador da página."}</p>
             </div>
             <strong>{posts.filter((post) => post.topic === debate.slug).length} posts</strong>
             <button className="ghost-button" onClick={() => onSelectDebate(debate.slug)} type="button">Abrir no feed</button>
@@ -1591,7 +1591,7 @@ function AdminView({ activeTab, categoryCounts, debates, metrics, onChangeTab, o
     }))
   );
   const neighborhoods = profiles.reduce((items, person) => {
-    const key = person.neighborhood || "NÃ£o informado";
+    const key = person.neighborhood || "Não informado";
     items[key] = (items[key] || 0) + 1;
     return items;
   }, {});
@@ -1601,8 +1601,8 @@ function AdminView({ activeTab, categoryCounts, debates, metrics, onChangeTab, o
     .join(", ");
   const issueRows = Object.values(
     reports.reduce((items, report) => {
-      const category = report.post?.category || report.post?.topic || (report.comment ? "comentÃ¡rio" : "geral");
-      const city = report.post?.neighborhood || report.reporter?.neighborhood || "NÃ£o informado";
+      const category = report.post?.category || report.post?.topic || (report.comment ? "comentário" : "geral");
+      const city = report.post?.neighborhood || report.reporter?.neighborhood || "Não informado";
       const key = `${category}__${city}`;
       if (!items[key]) items[key] = { category, city, count: 0 };
       items[key].count += 1;
@@ -1612,7 +1612,7 @@ function AdminView({ activeTab, categoryCounts, debates, metrics, onChangeTab, o
 
   function downloadReport() {
     const rows = [
-      ["categoria", "cidade_ou_regiÃ£o", "quantidade"],
+      ["categoria", "cidade_ou_região", "quantidade"],
       ...issueRows.map((row) => [row.category, row.city, row.count]),
       [],
       ["status", "quantidade"],
@@ -1645,14 +1645,14 @@ function AdminView({ activeTab, categoryCounts, debates, metrics, onChangeTab, o
       <header className="view-header">
         <p className="eyebrow">Administrador geral</p>
         <h1>Dashboard de controle</h1>
-        <button className="ghost-button report-download" onClick={downloadReport} type="button">Baixar relatÃ³rio</button>
+        <button className="ghost-button report-download" onClick={downloadReport} type="button">Baixar relatório</button>
       </header>
 
       <div className="admin-tabs">
-        <button className={activeTab === "overview" ? "active" : ""} onClick={() => onChangeTab("overview")} type="button">MÃ©tricas</button>
-        <button className={activeTab === "users" ? "active" : ""} onClick={() => onChangeTab("users")} type="button">UsuÃ¡rios e leads</button>
-        <button className={activeTab === "content" ? "active" : ""} onClick={() => onChangeTab("content")} type="button">ConteÃºdo</button>
-        <button className={activeTab === "reports" ? "active" : ""} onClick={() => onChangeTab("reports")} type="button">RelatÃ³rios</button>
+        <button className={activeTab === "overview" ? "active" : ""} onClick={() => onChangeTab("overview")} type="button">Métricas</button>
+        <button className={activeTab === "users" ? "active" : ""} onClick={() => onChangeTab("users")} type="button">Usuários e leads</button>
+        <button className={activeTab === "content" ? "active" : ""} onClick={() => onChangeTab("content")} type="button">Conteúdo</button>
+        <button className={activeTab === "reports" ? "active" : ""} onClick={() => onChangeTab("reports")} type="button">Relatórios</button>
       </div>
 
       {activeTab === "overview" && (
@@ -1669,7 +1669,7 @@ function AdminView({ activeTab, categoryCounts, debates, metrics, onChangeTab, o
       <section className="admin-table">
         <div className="panel-title">
               <h2>Regioes de Brasilia</h2>
-              <small>Quantidade de usuÃ¡rios por bairro/regiÃ£o</small>
+              <small>Quantidade de usuários por bairro/região</small>
         </div>
             <div className="topic-list">
               {Object.entries(neighborhoods).map(([name, count]) => (
@@ -1730,12 +1730,12 @@ function AdminView({ activeTab, categoryCounts, debates, metrics, onChangeTab, o
           <section className="admin-table">
             <div className="panel-title">
               <h2>Ranking da comunidade</h2>
-              <small>ParticipaÃ§Ã£o por pontuaÃ§Ã£o</small>
+              <small>Participação por pontuação</small>
             </div>
             <div className="topic-list">
               {ranking.map((person) => (
                 <div className="topic-item read-only" key={person.id}>
-                  <span>{person.name || "Morador"} Â· {getReputationLabel(person.score)}</span>
+                  <span>{person.name || "Morador"} · {getReputationLabel(person.score)}</span>
                   <strong>{person.score}</strong>
                 </div>
               ))}
@@ -1761,8 +1761,8 @@ function AdminView({ activeTab, categoryCounts, debates, metrics, onChangeTab, o
                   <th>Contato</th>
                   <th>Bairro</th>
                   <th>Perfil</th>
-                  <th>InsÃ­gnia</th>
-                  <th>AÃ§Ã£o</th>
+                  <th>Insígnia</th>
+                  <th>Ação</th>
                 </tr>
               </thead>
               <tbody>
@@ -1781,7 +1781,7 @@ function AdminView({ activeTab, categoryCounts, debates, metrics, onChangeTab, o
                           <option value="organizer">Organizador</option>
                           <option value="admin">Administrador</option>
                         </select>
-                        <input defaultValue={person.badge_title || ""} name="badge_title" placeholder="TÃ­tulo ou insÃ­gnia" />
+                        <input defaultValue={person.badge_title || ""} name="badge_title" placeholder="Título ou insígnia" />
                         <button className="ghost-button" type="submit">Salvar</button>
                       </form>
                     </td>
@@ -1810,9 +1810,9 @@ function AdminView({ activeTab, categoryCounts, debates, metrics, onChangeTab, o
                     <th>Debate</th>
                     <th>Categoria</th>
                     <th>Status</th>
-                    <th>ConteÃºdo</th>
-                    <th>ModeraÃ§Ã£o</th>
-                    <th>AÃ§Ã£o</th>
+                    <th>Conteúdo</th>
+                    <th>Moderação</th>
+                    <th>Ação</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1843,17 +1843,17 @@ function AdminView({ activeTab, categoryCounts, debates, metrics, onChangeTab, o
 
           <section className="admin-table">
             <div className="panel-title">
-              <h2>ComentÃ¡rios</h2>
-              <small>{allComments.length} comentÃ¡rios</small>
+              <h2>Comentários</h2>
+              <small>{allComments.length} comentários</small>
             </div>
             <div className="table-scroll">
               <table>
                 <thead>
                   <tr>
                     <th>Autor</th>
-                    <th>ComentÃ¡rio</th>
+                    <th>Comentário</th>
                     <th>Post</th>
-                    <th>AÃ§Ã£o</th>
+                    <th>Ação</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1862,7 +1862,7 @@ function AdminView({ activeTab, categoryCounts, debates, metrics, onChangeTab, o
                       <td>{comment.commenter?.name || "Morador"}</td>
                       <td>{comment.body}</td>
                       <td>{comment.postStreet || "-"} | {comment.postBody}</td>
-                      <td><button className="delete-button" onClick={() => onDeleteComment(comment)} type="button">Excluir comentÃ¡rio</button></td>
+                      <td><button className="delete-button" onClick={() => onDeleteComment(comment)} type="button">Excluir comentário</button></td>
                     </tr>
                   ))}
                 </tbody>
@@ -1875,7 +1875,7 @@ function AdminView({ activeTab, categoryCounts, debates, metrics, onChangeTab, o
       {activeTab === "reports" && (
         <section className="admin-table">
           <div className="panel-title">
-            <h2>RelatÃ³rios de problemas</h2>
+            <h2>Relatórios de problemas</h2>
             <small>{reports.length} relatos</small>
           </div>
           <div className="table-scroll">
@@ -1884,8 +1884,8 @@ function AdminView({ activeTab, categoryCounts, debates, metrics, onChangeTab, o
                 <tr>
                   <th>Quem relatou</th>
                   <th>Problema</th>
-                  <th>ConteÃºdo</th>
-                  <th>AÃ§Ã£o</th>
+                  <th>Conteúdo</th>
+                  <th>Ação</th>
                 </tr>
               </thead>
               <tbody>
@@ -1896,7 +1896,7 @@ function AdminView({ activeTab, categoryCounts, debates, metrics, onChangeTab, o
                     <td>{report.post?.body || report.comment?.body || "-"}</td>
                     <td>
                       {report.post && <button className="delete-button" onClick={() => onDeletePost({ id: report.post_id, user_id: report.post.user_id })} type="button">Excluir post</button>}
-                      {report.comment && <button className="delete-button" onClick={() => onDeleteComment({ id: report.comment_id, user_id: report.comment.user_id })} type="button">Excluir comentÃ¡rio</button>}
+                      {report.comment && <button className="delete-button" onClick={() => onDeleteComment({ id: report.comment_id, user_id: report.comment.user_id })} type="button">Excluir comentário</button>}
                     </td>
                   </tr>
                 ))}
@@ -2000,10 +2000,10 @@ function getReputationLabel(score) {
 }
 
 function notificationText(type) {
-  if (type === "like") return "curtiu sua publicaÃ§Ã£o.";
-  if (type === "status") return "atualizou o status da sua publicaÃ§Ã£o.";
-  if (type === "admin_response") return "enviou uma resposta oficial na sua publicaÃ§Ã£o.";
-  return "comentou na sua publicaÃ§Ã£o.";
+  if (type === "like") return "curtiu sua publicação.";
+  if (type === "status") return "atualizou o status da sua publicação.";
+  if (type === "admin_response") return "enviou uma resposta oficial na sua publicação.";
+  return "comentou na sua publicação.";
 }
 
 function topicLabel(topicId, debates) {

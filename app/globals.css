@@ -1296,16 +1296,18 @@ small {
 
 .right-panel {
   position: sticky;
-  top: 24px;
+  top: 18px;
   display: grid;
-  gap: 10px;
+  gap: 12px;
+  align-self: start;
 }
 
 .profile-editor,
 .topic-panel {
   display: grid;
-  gap: 10px;
-  padding: 12px;
+  gap: 12px;
+  padding: 14px;
+  overflow: hidden;
 }
 
 .mobile-profile-editor {
@@ -1320,38 +1322,55 @@ small {
 .panel-title h2,
 .topic-panel h2 {
   margin: 0;
-  font-size: 1rem;
+  font-size: 0.96rem;
+  line-height: 1.15;
 }
 
 .topic-list {
   display: grid;
-  gap: 7px;
-  max-height: 230px;
-  overflow-y: auto;
+  gap: 8px;
+  max-height: none;
+  overflow: visible;
 }
 
 .topic-item {
   width: 100%;
-  min-height: 44px;
+  min-height: 42px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--line-soft);
   border-radius: 8px;
-  padding: 10px 12px;
+  padding: 9px 10px;
   color: var(--ink);
   background: var(--surface);
   font-weight: 900;
+  text-align: left;
+  transition: border-color 0.18s ease, background 0.18s ease, transform 0.18s ease;
 }
 
 .topic-item span {
   color: var(--muted);
+  min-width: 0;
+  overflow-wrap: anywhere;
+  line-height: 1.25;
+}
+
+.topic-item strong {
+  flex: 0 0 auto;
+  color: var(--ink);
+  font-size: 0.95rem;
 }
 
 .topic-item.active,
 .topic-item:hover {
   background: var(--surface-muted);
+  border-color: var(--ink);
+}
+
+.topic-item:hover {
+  transform: translateY(-1px);
 }
 
 .topic-item.read-only {
