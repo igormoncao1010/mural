@@ -1939,6 +1939,77 @@ th {
     padding: 0 7px;
   }
 
+  .post-header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+    gap: 8px;
+    padding: 10px;
+  }
+
+  .profile-link {
+    width: 100%;
+    min-width: 0;
+    display: grid;
+    grid-template-columns: 34px minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  .profile-link .avatar {
+    width: 34px;
+    height: 34px;
+    font-size: 0.72rem;
+  }
+
+  .profile-link > div {
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .profile-link strong {
+    max-width: 100%;
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.9rem;
+    line-height: 1.15;
+  }
+
+  .profile-link small {
+    max-width: 100%;
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.68rem;
+    line-height: 1.2;
+  }
+
+  .post-header > span {
+    max-width: 86px;
+    margin-left: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    padding: 5px 7px;
+    font-size: 0.64rem;
+  }
+
+  .post-header .delete-button {
+    grid-column: 2;
+    justify-self: end;
+    padding: 5px 7px;
+    font-size: 0.62rem;
+  }
+
+  .profile-badge {
+    max-width: 96px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
   .public-profile-card {
     gap: 14px;
     padding: 16px;
