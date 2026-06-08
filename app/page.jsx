@@ -754,13 +754,20 @@ export default function HomePage() {
     await loadCandidateQuestions();
   }
 
-  async function updateCandidateMedia(event, candidate) {
+  async function updateCandidateCustomization(event, candidate) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     const profileAvatar = form.get("profile_avatar");
     const storyImage = form.get("story_image");
     const coverImage = form.get("cover_image");
-    const updates = {};
+    const updates = {
+      name: String(form.get("name") || candidate.name || "").trim(),
+      role: String(form.get("role") || candidate.role || "").trim(),
+      bio: String(form.get("bio") || candidate.bio || "").trim(),
+      text_color: String(form.get("text_color") || candidate.textColor || "#ffffff"),
+      background_color: String(form.get("background_color") || candidate.backgroundColor || "#111111"),
+      accent_color: String(form.get("accent_color") || candidate.accentColor || "#111111"),
+    };
 
     if (profileAvatar?.size) {
       const path = createStoragePath(session.user.id, profileAvatar, "candidato-perfil");
@@ -806,11 +813,6 @@ export default function HomePage() {
       updates.cover_image_url = supabase.storage.from("candidate-images").getPublicUrl(path).data.publicUrl;
     }
 
-    if (!Object.keys(updates).length) {
-      setMessage("Escolha ao menos uma imagem para atualizar.");
-      return;
-    }
-
     const { error } = await supabase
       .from("candidate_pages")
       .update(updates)
@@ -821,8 +823,7 @@ export default function HomePage() {
       return;
     }
 
-    event.currentTarget.reset();
-    setMessage("Imagens da candidata atualizadas.");
+    setMessage("Mural da candidata personalizado.");
     await loadProfile();
     await loadCandidatePages();
   }
@@ -1110,6 +1111,9 @@ export default function HomePage() {
       storyImage,
       coverImage,
       profileImage: savedCandidate?.profile_image_url || "",
+      textColor: savedCandidate?.text_color || "#ffffff",
+      backgroundColor: savedCandidate?.background_color || "#111111",
+      accentColor: savedCandidate?.accent_color || "#111111",
     };
   });
   const currentCandidate = candidateDirectory.find((candidate) => candidate.slug === currentCandidateSlug) || candidateDirectory[0];
@@ -1332,7 +1336,7 @@ export default function HomePage() {
             onAnswer={answerCandidateQuestion}
             onAsk={askCandidateQuestion}
             onBack={goToFeed}
-            onUpdateMedia={updateCandidateMedia}
+            onUpdateCustomization={updateCandidateCustomization}
             profile={profile}
             questions={currentCandidateQuestions}
           />
@@ -1781,7 +1785,7 @@ function CandidateStories({ candidates, onOpenCandidate }) {
 
       <div className="candidate-story-row">
         {candidates.map((candidate) => (
-          <button className="candidate-story-card" key={candidate.name} onClick={() => onOpenCandidate(candidate)} type="button">
+          <button className="candidate-story-card" key={candidate.name} onClick={() => onOpenCandidate(candidate)} style={{ "--candidate-accent": candidate.accentColor || "#111111" }} type="button">
             <img alt={`Foto de ${candidate.name}`} src={candidate.storyImage || candidate.image} />
             <span className="candidate-story-ring" />
             <div>
@@ -1795,7 +1799,8 @@ function CandidateStories({ candidates, onOpenCandidate }) {
   );
 }
 
-function CandidateQuestionView({ candidate, isCandidate, onAnswer, onAsk, onBack, onUpdateMedia, profile, questions }) {
+function CandidateQuestionView({ candidate, isCandidate, onAnswer, onAsk, onBack, onUpdateCustomization, profile, questions }) {
+  const [customizing, setCustomizing] = useState(false);
   const answeredQuestions = questions.filter((question) => question.answer);
   const pendingQuestions = questions.filter((question) => !question.answer);
   const topicCounts = candidateQuestionTopics.map((topic) => ({
@@ -1804,10 +1809,10 @@ function CandidateQuestionView({ candidate, isCandidate, onAnswer, onAsk, onBack
   })).filter((item) => item.count > 0);
 
   return (
-    <section className="candidate-page">
+    <section className="candidate-page" style={{ "--candidate-accent": candidate.accentColor || "#111111" }}>
       <button className="ghost-button profile-back-button" onClick={onBack} type="button">Voltar ao feed</button>
 
-      <header className="candidate-hero">
+      <header className="candidate-hero" style={{ backgroundColor: candidate.backgroundColor || "#111111", color: candidate.textColor || "#ffffff" }}>
         <img alt={`Capa de ${candidate.name}`} src={candidate.coverImage || candidate.storyImage || candidate.image} />
         <div>
           <p className="eyebrow">Pergunte ao candidato</p>
@@ -1835,38 +1840,71 @@ function CandidateQuestionView({ candidate, isCandidate, onAnswer, onAsk, onBack
       {isCandidate && (
         <section className="candidate-media-panel">
           <div className="panel-title">
-            <h2>Imagens da candidata</h2>
-            <small>Atualize a foto do perfil, o card do feed e a capa do mural.</small>
+            <div>
+              <h2>Personalizar mural</h2>
+              <small>Altere textos, cores e imagens da página pública da candidata.</small>
+            </div>
+            <button className="ghost-button" onClick={() => setCustomizing((open) => !open)} type="button">
+              {customizing ? "Fechar personalização" : "Personalizar"}
+            </button>
           </div>
-          <div className="candidate-media-preview">
-            <div>
-              <Avatar profile={{ ...profile, avatar_url: profile?.avatar_url || candidate.profileImage }} />
-              <span>Perfil</span>
-            </div>
-            <div>
-              <img alt="Prévia do card" src={candidate.storyImage || candidate.image} />
-              <span>Card do feed</span>
-            </div>
-            <div>
-              <img alt="Prévia da capa" src={candidate.coverImage || candidate.storyImage || candidate.image} />
-              <span>Capa do mural</span>
-            </div>
-          </div>
-          <form className="candidate-media-form" onSubmit={(event) => onUpdateMedia(event, candidate)}>
-            <label>
-              Foto do perfil
-              <input accept="image/*" name="profile_avatar" type="file" />
-            </label>
-            <label>
-              Foto do card no feed
-              <input accept="image/*" name="story_image" type="file" />
-            </label>
-            <label>
-              Foto da capa do mural
-              <input accept="image/*" name="cover_image" type="file" />
-            </label>
-            <button className="primary-button" type="submit">Salvar imagens</button>
-          </form>
+          {customizing && (
+            <>
+              <div className="candidate-media-preview">
+                <div>
+                  <Avatar profile={{ ...profile, avatar_url: profile?.avatar_url || candidate.profileImage }} />
+                  <span>Perfil</span>
+                </div>
+                <div>
+                  <img alt="Prévia do card" src={candidate.storyImage || candidate.image} />
+                  <span>Card do feed</span>
+                </div>
+                <div>
+                  <img alt="Prévia da capa" src={candidate.coverImage || candidate.storyImage || candidate.image} />
+                  <span>Capa do mural</span>
+                </div>
+              </div>
+              <form className="candidate-custom-form" onSubmit={(event) => onUpdateCustomization(event, candidate)}>
+                <label>
+                  Nome exibido
+                  <input defaultValue={candidate.name} name="name" required />
+                </label>
+                <label>
+                  Área/tema
+                  <input defaultValue={candidate.role} name="role" placeholder="Educação, infraestrutura, saúde..." required />
+                </label>
+                <label className="wide-field">
+                  Texto da bio
+                  <textarea defaultValue={candidate.bio} name="bio" required />
+                </label>
+                <label>
+                  Cor do texto
+                  <input defaultValue={candidate.textColor || "#ffffff"} name="text_color" type="color" />
+                </label>
+                <label>
+                  Cor de fundo
+                  <input defaultValue={candidate.backgroundColor || "#111111"} name="background_color" type="color" />
+                </label>
+                <label>
+                  Cor de destaque
+                  <input defaultValue={candidate.accentColor || "#111111"} name="accent_color" type="color" />
+                </label>
+                <label>
+                  Foto do perfil
+                  <input accept="image/*" name="profile_avatar" type="file" />
+                </label>
+                <label>
+                  Foto do card no feed
+                  <input accept="image/*" name="story_image" type="file" />
+                </label>
+                <label>
+                  Foto da capa do mural
+                  <input accept="image/*" name="cover_image" type="file" />
+                </label>
+                <button className="primary-button" type="submit">Salvar personalização</button>
+              </form>
+            </>
+          )}
         </section>
       )}
 

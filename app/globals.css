@@ -589,7 +589,7 @@ small {
   inset: 6px;
   border: 2px solid transparent;
   border-radius: 10px;
-  background: linear-gradient(transparent, transparent) padding-box, linear-gradient(135deg, #ff365f, #ffcf3f, #088bff) border-box;
+  background: linear-gradient(transparent, transparent) padding-box, linear-gradient(135deg, #ff365f, var(--candidate-accent, #ffcf3f), #088bff) border-box;
   -webkit-mask: linear-gradient(#000 0 0) padding-box, linear-gradient(#000 0 0);
   -webkit-mask-composite: xor;
   mask-composite: exclude;
@@ -673,8 +673,8 @@ small {
   margin-bottom: 12px;
   border-radius: 999px;
   padding: 7px 11px;
-  color: #111;
-  background: #fff;
+  color: #fff;
+  background: var(--candidate-accent, #111);
 }
 
 .candidate-hero p:last-child {
@@ -723,6 +723,10 @@ small {
   background: var(--surface);
 }
 
+.candidate-media-panel .panel-title {
+  align-items: center;
+}
+
 .candidate-media-preview {
   display: grid;
   grid-template-columns: 120px repeat(2, minmax(0, 1fr));
@@ -761,27 +765,51 @@ small {
   font-weight: 900;
 }
 
-.candidate-media-form {
+.candidate-media-form,
+.candidate-custom-form {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
   gap: 10px;
   align-items: end;
 }
 
-.candidate-media-form label {
+.candidate-custom-form {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.candidate-media-form label,
+.candidate-custom-form label {
   display: grid;
   gap: 7px;
   color: var(--muted);
   font-weight: 900;
 }
 
-.candidate-media-form input {
+.candidate-media-form input,
+.candidate-custom-form input,
+.candidate-custom-form textarea {
   width: 100%;
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 10px;
   background: var(--surface);
   color: var(--muted);
+}
+
+.candidate-custom-form textarea {
+  min-height: 120px;
+  resize: vertical;
+  color: var(--ink);
+}
+
+.candidate-custom-form input[type="color"] {
+  min-height: 46px;
+  padding: 4px;
+}
+
+.candidate-custom-form .wide-field,
+.candidate-custom-form .primary-button {
+  grid-column: 1 / -1;
 }
 
 .candidate-question-box,
@@ -886,7 +914,7 @@ small {
 }
 
 .candidate-answer strong {
-  color: var(--ok);
+  color: var(--candidate-accent, var(--ok));
 }
 
 .candidate-answer p {
@@ -2388,7 +2416,8 @@ th {
   }
 
   .candidate-media-preview,
-  .candidate-media-form {
+  .candidate-media-form,
+  .candidate-custom-form {
     grid-template-columns: 1fr;
   }
 

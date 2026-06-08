@@ -110,6 +110,9 @@ create table if not exists public.candidate_pages (
   profile_image_url text default '',
   story_image_url text default '',
   cover_image_url text default '',
+  text_color text default '#ffffff',
+  background_color text default '#111111',
+  accent_color text default '#111111',
   status text default 'active',
   created_at timestamptz default now(),
   updated_at timestamptz default now()
@@ -118,6 +121,9 @@ create table if not exists public.candidate_pages (
 alter table public.candidate_pages add column if not exists profile_image_url text default '';
 alter table public.candidate_pages add column if not exists story_image_url text default '';
 alter table public.candidate_pages add column if not exists cover_image_url text default '';
+alter table public.candidate_pages add column if not exists text_color text default '#ffffff';
+alter table public.candidate_pages add column if not exists background_color text default '#111111';
+alter table public.candidate_pages add column if not exists accent_color text default '#111111';
 
 create table if not exists public.candidate_questions (
   id uuid primary key default gen_random_uuid(),
@@ -445,7 +451,7 @@ set title = excluded.title,
     description = excluded.description,
     status = excluded.status;
 
-insert into public.candidate_pages (slug, name, email, role, bio, image_url, story_image_url, cover_image_url, status)
+insert into public.candidate_pages (slug, name, email, role, bio, image_url, story_image_url, cover_image_url, text_color, background_color, accent_color, status)
 values
   (
     'ana-martins',
@@ -456,6 +462,9 @@ values
     'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=900&q=85',
     'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=420&q=80',
     'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=1200&q=85',
+    '#ffffff',
+    '#111111',
+    '#0f766e',
     'active'
   ),
   (
@@ -467,6 +476,9 @@ values
     'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=900&q=85',
     'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=420&q=80',
     'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=1200&q=85',
+    '#ffffff',
+    '#111111',
+    '#2563eb',
     'active'
   ),
   (
@@ -478,6 +490,9 @@ values
     'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=900&q=85',
     'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=420&q=80',
     'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=1200&q=85',
+    '#ffffff',
+    '#111111',
+    '#dc2626',
     'active'
   ),
   (
@@ -489,6 +504,9 @@ values
     'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=900&q=85',
     'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=420&q=80',
     'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=1200&q=85',
+    '#ffffff',
+    '#111111',
+    '#7c3aed',
     'active'
   ),
   (
@@ -500,6 +518,9 @@ values
     'https://images.unsplash.com/photo-1598550874175-4d0ef436c909?auto=format&fit=crop&w=900&q=85',
     'https://images.unsplash.com/photo-1598550874175-4d0ef436c909?auto=format&fit=crop&w=420&q=80',
     'https://images.unsplash.com/photo-1598550874175-4d0ef436c909?auto=format&fit=crop&w=1200&q=85',
+    '#ffffff',
+    '#111111',
+    '#f97316',
     'active'
   ),
   (
@@ -511,6 +532,9 @@ values
     'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=900&q=85',
     'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=420&q=80',
     'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=1200&q=85',
+    '#ffffff',
+    '#111111',
+    '#0891b2',
     'active'
   ),
   (
@@ -522,6 +546,9 @@ values
     'https://images.unsplash.com/photo-1551836022-d5d88e9218df?auto=format&fit=crop&w=900&q=85',
     'https://images.unsplash.com/photo-1551836022-d5d88e9218df?auto=format&fit=crop&w=420&q=80',
     'https://images.unsplash.com/photo-1551836022-d5d88e9218df?auto=format&fit=crop&w=1200&q=85',
+    '#ffffff',
+    '#111111',
+    '#db2777',
     'active'
   ),
   (
@@ -533,6 +560,9 @@ values
     'https://images.unsplash.com/photo-1568602471122-7832951cc4c5?auto=format&fit=crop&w=900&q=85',
     'https://images.unsplash.com/photo-1568602471122-7832951cc4c5?auto=format&fit=crop&w=420&q=80',
     'https://images.unsplash.com/photo-1568602471122-7832951cc4c5?auto=format&fit=crop&w=1200&q=85',
+    '#ffffff',
+    '#111111',
+    '#ca8a04',
     'active'
   ),
   (
@@ -544,6 +574,9 @@ values
     'https://images.unsplash.com/photo-1607746882042-944635dfe10e?auto=format&fit=crop&w=900&q=85',
     'https://images.unsplash.com/photo-1607746882042-944635dfe10e?auto=format&fit=crop&w=420&q=80',
     'https://images.unsplash.com/photo-1607746882042-944635dfe10e?auto=format&fit=crop&w=1200&q=85',
+    '#ffffff',
+    '#111111',
+    '#16a34a',
     'active'
   ),
   (
@@ -555,17 +588,23 @@ values
     'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=900&q=85',
     'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=420&q=80',
     'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=1200&q=85',
+    '#ffffff',
+    '#111111',
+    '#525252',
     'active'
   )
 on conflict (slug) do update
-set name = excluded.name,
-    email = excluded.email,
-    role = excluded.role,
-    bio = excluded.bio,
-    image_url = excluded.image_url,
-    story_image_url = excluded.story_image_url,
-    cover_image_url = excluded.cover_image_url,
-    status = excluded.status;
+set name = coalesce(nullif(public.candidate_pages.name, ''), excluded.name),
+    email = coalesce(nullif(public.candidate_pages.email, ''), excluded.email),
+    role = coalesce(nullif(public.candidate_pages.role, ''), excluded.role),
+    bio = coalesce(nullif(public.candidate_pages.bio, ''), excluded.bio),
+    image_url = coalesce(nullif(public.candidate_pages.image_url, ''), excluded.image_url),
+    story_image_url = coalesce(nullif(public.candidate_pages.story_image_url, ''), excluded.story_image_url),
+    cover_image_url = coalesce(nullif(public.candidate_pages.cover_image_url, ''), excluded.cover_image_url),
+    text_color = coalesce(nullif(public.candidate_pages.text_color, ''), excluded.text_color),
+    background_color = coalesce(nullif(public.candidate_pages.background_color, ''), excluded.background_color),
+    accent_color = coalesce(nullif(public.candidate_pages.accent_color, ''), excluded.accent_color),
+    status = coalesce(nullif(public.candidate_pages.status, ''), excluded.status);
 
 insert into storage.buckets (id, name, public)
 values ('avatars', 'avatars', true)
