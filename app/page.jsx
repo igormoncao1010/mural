@@ -71,6 +71,7 @@ export default function HomePage() {
   const [activeCommentPostId, setActiveCommentPostId] = useState(null);
   const [viewedProfile, setViewedProfile] = useState(null);
   const [selectedPostId, setSelectedPostId] = useState("");
+  const [selectedPostRecord, setSelectedPostRecord] = useState(null);
   const [currentCandidateSlug, setCurrentCandidateSlug] = useState("ana-martins");
   const [postDraft, setPostDraft] = useState({ body: "", topic: "", category: "problema", street: "", neighborhood: "" });
   const [postImageFile, setPostImageFile] = useState(null);
@@ -119,6 +120,7 @@ export default function HomePage() {
       setAdminPosts([]);
       setCandidatePages([]);
       setCandidateQuestions([]);
+      setSelectedPostRecord(null);
       setNotifications([]);
       setFollows([]);
       return;
@@ -318,10 +320,35 @@ export default function HomePage() {
     const { data, error } = await supabase
       .from("notifications")
       .select("*, actor:profiles!notifications_actor_id_fkey(name, avatar_url, role, badge_title), post:posts!notifications_post_id_fkey(body, street, neighborhood)")
+      .is("read_at", null)
       .order("created_at", { ascending: false })
       .limit(30);
 
     if (!error) setNotifications(data || []);
+  }
+
+  async function loadPostById(postId) {
+    if (!postId) return null;
+
+    const { data, error } = await supabase
+      .from("posts")
+      .select("*, author:profiles!posts_user_id_fkey(id, name, avatar_url, neighborhood, bio, role, badge_title), comments(*, commenter:profiles!comments_user_id_fkey(id, name, avatar_url, neighborhood, bio, role, badge_title)), likes(user_id)")
+      .eq("id", postId)
+      .single();
+
+    if (error) {
+      setMessage(error.message);
+      return null;
+    }
+
+    setPosts((currentPosts) => {
+      const exists = currentPosts.some((post) => post.id === data.id);
+      if (exists) return currentPosts.map((post) => (post.id === data.id ? data : post));
+      return [data, ...currentPosts];
+    });
+    setSelectedPostRecord(data);
+
+    return data;
   }
 
   async function loadFollows() {
@@ -353,6 +380,17 @@ export default function HomePage() {
     await supabase.from("notifications").update({ read_at: readAt }).in("id", unreadIds);
   }
 
+  async function openNotification(item) {
+    if (!item?.post_id) return;
+
+    const readAt = new Date().toISOString();
+    setNotifications((items) => items.filter((notification) => notification.id !== item.id));
+    await supabase.from("notifications").update({ read_at: readAt }).eq("id", item.id);
+    await loadPostById(item.post_id);
+    setShowAlerts(false);
+    openPost(item.post_id);
+  }
+
   function openPublicProfile(person, fallbackId) {
     if (!person && !fallbackId) return;
 
@@ -374,6 +412,8 @@ export default function HomePage() {
   }
 
   function openPost(postId) {
+    const localPost = posts.find((post) => post.id === postId);
+    if (localPost) setSelectedPostRecord(localPost);
     setSelectedPostId(postId);
     setActiveView("post-detail");
     if (typeof window !== "undefined") {
@@ -387,6 +427,7 @@ export default function HomePage() {
   function goToFeed() {
     setActiveView("feed");
     setSelectedPostId("");
+    setSelectedPostRecord(null);
     if (typeof window !== "undefined") {
       const url = new URL(window.location.href);
       url.searchParams.delete("post");
@@ -1011,13 +1052,13 @@ export default function HomePage() {
     const matchesSearch = !query || text.includes(query.toLowerCase());
     return matchesFilter && matchesSearch;
   });
-  const selectedPost = posts.find((post) => post.id === selectedPostId);
+  const selectedPost = posts.find((post) => post.id === selectedPostId) || (selectedPostRecord?.id === selectedPostId ? selectedPostRecord : null);
   const userPosts = posts.filter((post) => post.user_id === session?.user?.id).length;
   const userComments = posts.reduce(
     (total, post) => total + (post.comments || []).filter((comment) => comment.user_id === session?.user?.id).length,
     0
   );
-  const unreadNotifications = notifications.filter((item) => !item.read_at).length;
+  const unreadNotifications = notifications.length;
   const analyticsPosts = isAdmin && adminPosts.length ? adminPosts : posts;
   const communityProfiles = adminProfiles.length
     ? adminProfiles
@@ -1149,17 +1190,14 @@ export default function HomePage() {
           <div className="alerts-block mobile-nav-alerts">
             <button
               className={showAlerts ? "alerts-button active" : "alerts-button"}
-              onClick={() => {
-                setShowAlerts((open) => !open);
-                if (!showAlerts) markNotificationsAsRead();
-              }}
+              onClick={() => setShowAlerts((open) => !open)}
               title="Notificações"
               type="button"
             >
               <BellIcon />
               {unreadNotifications > 0 && <strong>{unreadNotifications}</strong>}
             </button>
-            {showAlerts && <NotificationsPanel notifications={notifications} />}
+            {showAlerts && <NotificationsPanel notifications={notifications} onOpenNotification={openNotification} />}
           </div>
           <button className="mobile-profile-nav" onClick={toggleOwnProfile} title="Meu perfil" type="button">
             <Avatar profile={profile} />
@@ -1185,16 +1223,13 @@ export default function HomePage() {
         <div className="alerts-block">
           <button
             className={showAlerts ? "alerts-button active" : "alerts-button"}
-            onClick={() => {
-              setShowAlerts((open) => !open);
-              if (!showAlerts) markNotificationsAsRead();
-            }}
+            onClick={() => setShowAlerts((open) => !open)}
             type="button"
           >
             <span>Alertas</span>
             {unreadNotifications > 0 && <strong>{unreadNotifications}</strong>}
           </button>
-          {showAlerts && <NotificationsPanel notifications={notifications} />}
+          {showAlerts && <NotificationsPanel notifications={notifications} onOpenNotification={openNotification} />}
         </div>
 
         <div className="sidebar-stats">
@@ -1707,26 +1742,26 @@ function TermsView() {
   );
 }
 
-function NotificationsPanel({ notifications }) {
+function NotificationsPanel({ notifications, onOpenNotification }) {
   return (
     <section className="alerts-panel">
       <div className="alerts-title">
-        <strong>Notificações</strong>
+        <strong>Notificações em aberto</strong>
         <span>{notifications.length}</span>
       </div>
       {notifications.length === 0 ? (
-        <p className="empty-alerts">Nenhuma notificação ainda.</p>
+        <p className="empty-alerts">Nenhuma notificação em aberto.</p>
       ) : (
         <div className="alerts-list">
           {notifications.map((item) => (
-            <article className={item.read_at ? "alert-item" : "alert-item unread"} key={item.id}>
+            <button className="alert-item unread" key={item.id} onClick={() => onOpenNotification(item)} type="button">
               <Avatar profile={item.actor} />
               <div>
                 <strong>{item.actor?.name || "Alguém"}</strong>
                 <p>{notificationText(item.type)}</p>
-                <small>{item.post?.street || item.post?.body || "Publicação do feed"}</small>
+                <small>{notificationPostContext(item)}</small>
               </div>
-            </article>
+            </button>
           ))}
         </div>
       )}
@@ -3141,6 +3176,15 @@ function notificationText(type) {
   if (type === "status") return "atualizou o status da sua publicação.";
   if (type === "admin_response") return "enviou uma resposta oficial na sua publicação.";
   return "comentou na sua publicação.";
+}
+
+function notificationPostContext(item) {
+  const street = item.post?.street?.trim();
+  const neighborhood = item.post?.neighborhood?.trim();
+  const body = item.post?.body?.trim();
+  if (street || neighborhood) return [street, neighborhood].filter(Boolean).join(" - ");
+  if (body) return body.length > 76 ? `${body.slice(0, 76)}...` : body;
+  return "Abrir publicação";
 }
 
 function topicLabel(topicId, debates) {

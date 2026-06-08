@@ -382,16 +382,27 @@ small {
 }
 
 .alert-item {
+  width: 100%;
   align-items: flex-start;
   border: 1px solid var(--line-soft);
   border-radius: 8px;
   padding: 9px;
+  color: inherit;
   background: var(--surface-muted);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  appearance: none;
 }
 
 .alert-item.unread {
   border-color: rgba(229, 57, 53, 0.28);
   background: #fff8f8;
+}
+
+.alert-item:hover {
+  border-color: var(--ink);
+  background: var(--surface);
 }
 
 .alert-item .avatar {
@@ -2198,6 +2209,7 @@ th {
     border-top: 1px solid var(--line);
     border-bottom: 0;
     box-shadow: 0 -16px 36px rgba(15, 23, 42, 0.08);
+    overflow: visible;
   }
 
   .brand div,
@@ -2214,7 +2226,7 @@ th {
   .side-nav {
     min-width: 0;
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr)) 70px repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr)) 66px repeat(3, minmax(0, 1fr));
     gap: 2px;
     flex: 1;
     overflow: visible;
@@ -2237,8 +2249,8 @@ th {
   }
 
   .mobile-compose-nav {
-    width: 58px;
-    height: 58px;
+    width: 56px;
+    height: 56px;
     position: relative;
     left: auto;
     bottom: auto;
@@ -2251,7 +2263,7 @@ th {
     color: #fff;
     background: #050505;
     box-shadow: 0 10px 24px rgba(0, 0, 0, 0.22);
-    transform: translateY(-15px);
+    transform: translateY(-11px);
   }
 
   .mobile-compose-nav .nav-icon {
