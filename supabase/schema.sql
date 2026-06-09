@@ -455,13 +455,13 @@ insert into public.candidate_pages (slug, name, email, role, bio, image_url, sto
 values
   (
     'ana-martins',
-    'Ana Martins',
-    'anamartins@nodus.com.br',
-    'Educação',
-    'Pré-candidata focada em educação, comunidade e escuta pública.',
-    'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=900&q=85',
-    'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=420&q=80',
-    'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=1200&q=85',
+    'Ronaldo Caiado',
+    'caiado@nodus.com.br',
+    'Pré-candidato',
+    'Espaço público para perguntas, respostas e propostas de Ronaldo Caiado.',
+    'https://veja.abril.com.br/wp-content/uploads/2025/10/RONALDO-CAIADO-53750771138.jpg.jpg?crop=1&h=720&quality=70&strip=info&w=1280',
+    'https://veja.abril.com.br/wp-content/uploads/2025/10/RONALDO-CAIADO-53750771138.jpg.jpg?crop=1&h=720&quality=70&strip=info&w=1280',
+    'https://veja.abril.com.br/wp-content/uploads/2025/10/RONALDO-CAIADO-53750771138.jpg.jpg?crop=1&h=720&quality=70&strip=info&w=1280',
     '#ffffff',
     '#111111',
     '#0f766e',
@@ -469,13 +469,13 @@ values
   ),
   (
     'carlos-rocha',
-    'Carlos Rocha',
-    'carlosrocha@nodus.com.br',
-    'Infraestrutura',
-    'Perguntas sobre obras, ruas, iluminação e zeladoria urbana.',
-    'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=900&q=85',
-    'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=420&q=80',
-    'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=1200&q=85',
+    'Arruda',
+    'arruda@nodus.com.br',
+    'Pré-candidato',
+    'Espaço público para perguntas, respostas e propostas de Arruda.',
+    'https://conteudo.imguol.com.br/c/noticias/e8/2022/05/21/jose-roberto-arruda-1653160908081_v2_3x4.jpg',
+    'https://conteudo.imguol.com.br/c/noticias/e8/2022/05/21/jose-roberto-arruda-1653160908081_v2_3x4.jpg',
+    'https://conteudo.imguol.com.br/c/noticias/e8/2022/05/21/jose-roberto-arruda-1653160908081_v2_3x4.jpg',
     '#ffffff',
     '#111111',
     '#2563eb',
@@ -605,6 +605,28 @@ set name = coalesce(nullif(public.candidate_pages.name, ''), excluded.name),
     background_color = coalesce(nullif(public.candidate_pages.background_color, ''), excluded.background_color),
     accent_color = coalesce(nullif(public.candidate_pages.accent_color, ''), excluded.accent_color),
     status = coalesce(nullif(public.candidate_pages.status, ''), excluded.status);
+
+update public.candidate_pages
+set name = 'Ronaldo Caiado',
+    email = 'caiado@nodus.com.br',
+    role = 'Pré-candidato',
+    bio = 'Espaço público para perguntas, respostas e propostas de Ronaldo Caiado.',
+    image_url = 'https://veja.abril.com.br/wp-content/uploads/2025/10/RONALDO-CAIADO-53750771138.jpg.jpg?crop=1&h=720&quality=70&strip=info&w=1280',
+    story_image_url = 'https://veja.abril.com.br/wp-content/uploads/2025/10/RONALDO-CAIADO-53750771138.jpg.jpg?crop=1&h=720&quality=70&strip=info&w=1280',
+    cover_image_url = 'https://veja.abril.com.br/wp-content/uploads/2025/10/RONALDO-CAIADO-53750771138.jpg.jpg?crop=1&h=720&quality=70&strip=info&w=1280',
+    accent_color = '#0f766e'
+where slug = 'ana-martins';
+
+update public.candidate_pages
+set name = 'Arruda',
+    email = 'arruda@nodus.com.br',
+    role = 'Pré-candidato',
+    bio = 'Espaço público para perguntas, respostas e propostas de Arruda.',
+    image_url = 'https://conteudo.imguol.com.br/c/noticias/e8/2022/05/21/jose-roberto-arruda-1653160908081_v2_3x4.jpg',
+    story_image_url = 'https://conteudo.imguol.com.br/c/noticias/e8/2022/05/21/jose-roberto-arruda-1653160908081_v2_3x4.jpg',
+    cover_image_url = 'https://conteudo.imguol.com.br/c/noticias/e8/2022/05/21/jose-roberto-arruda-1653160908081_v2_3x4.jpg',
+    accent_color = '#2563eb'
+where slug = 'carlos-rocha';
 
 insert into storage.buckets (id, name, public)
 values ('avatars', 'avatars', true)

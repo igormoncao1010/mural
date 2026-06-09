@@ -28,8 +28,8 @@ const issueStatuses = [
 ];
 
 const candidatePrompts = [
-  { slug: "ana-martins", name: "Ana Martins", email: "anamartins@nodus.com.br", role: "Educação", bio: "Pré-candidata focada em educação, comunidade e escuta pública.", image: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=420&q=80" },
-  { slug: "carlos-rocha", name: "Carlos Rocha", email: "carlosrocha@nodus.com.br", role: "Infraestrutura", bio: "Perguntas sobre obras, ruas, iluminação e zeladoria urbana.", image: "https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=420&q=80" },
+  { slug: "ana-martins", name: "Ronaldo Caiado", email: "caiado@nodus.com.br", role: "Pré-candidato", bio: "Espaço público para perguntas, respostas e propostas de Ronaldo Caiado.", image: "https://veja.abril.com.br/wp-content/uploads/2025/10/RONALDO-CAIADO-53750771138.jpg.jpg?crop=1&h=720&quality=70&strip=info&w=1280" },
+  { slug: "carlos-rocha", name: "Arruda", email: "arruda@nodus.com.br", role: "Pré-candidato", bio: "Espaço público para perguntas, respostas e propostas de Arruda.", image: "https://conteudo.imguol.com.br/c/noticias/e8/2022/05/21/jose-roberto-arruda-1653160908081_v2_3x4.jpg" },
   { slug: "marina-alves", name: "Marina Alves", email: "marinaalves@nodus.com.br", role: "Saúde", bio: "Debate público sobre atendimento, filas e prevenção.", image: "https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=420&q=80" },
   { slug: "rafael-lima", name: "Rafael Lima", email: "rafaellima@nodus.com.br", role: "Mobilidade", bio: "Transporte, acessibilidade, trânsito e deslocamento.", image: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=420&q=80" },
   { slug: "bianca-torres", name: "Bianca Torres", email: "biancatorres@nodus.com.br", role: "Segurança", bio: "Iluminação, rondas, prevenção e pontos de risco.", image: "https://images.unsplash.com/photo-1598550874175-4d0ef436c909?auto=format&fit=crop&w=420&q=80" },
