@@ -42,6 +42,11 @@ const candidatePrompts = [
 
 const FEED_PAGE_SIZE = 10;
 const candidateQuestionTopics = ["Educação", "Saúde", "Infraestrutura", "Segurança", "Mobilidade", "Emprego e renda", "Juventude", "Transparência", "Comunidade"];
+const airdropFonts = [
+  { value: "Inter, system-ui, sans-serif", label: "Moderna" },
+  { value: "Georgia, serif", label: "Editorial" },
+  { value: "Arial Black, Arial, sans-serif", label: "Impacto" },
+];
 
 export default function HomePage() {
   const [session, setSession] = useState(null);
@@ -56,6 +61,9 @@ export default function HomePage() {
   const [adminPosts, setAdminPosts] = useState([]);
   const [candidatePages, setCandidatePages] = useState([]);
   const [candidateQuestions, setCandidateQuestions] = useState([]);
+  const [airdrops, setAirdrops] = useState([]);
+  const [airdropViews, setAirdropViews] = useState([]);
+  const [activeAirdrop, setActiveAirdrop] = useState(null);
   const [notifications, setNotifications] = useState([]);
   const [follows, setFollows] = useState([]);
   const [showAlerts, setShowAlerts] = useState(false);
@@ -73,7 +81,7 @@ export default function HomePage() {
   const [selectedPostId, setSelectedPostId] = useState("");
   const [selectedPostRecord, setSelectedPostRecord] = useState(null);
   const [currentCandidateSlug, setCurrentCandidateSlug] = useState("ana-martins");
-  const [postDraft, setPostDraft] = useState({ body: "", topic: "", category: "problema", street: "", neighborhood: "" });
+  const [postDraft, setPostDraft] = useState({ body: "", topic: "", category: "problema", street: "", neighborhood: "", destination: "feed", font_family: airdropFonts[0].value, text_color: "#ffffff", background_color: "#111111" });
   const [postImageFile, setPostImageFile] = useState(null);
   const [postPreviewUrl, setPostPreviewUrl] = useState("");
   const [posting, setPosting] = useState(false);
@@ -120,6 +128,9 @@ export default function HomePage() {
       setAdminPosts([]);
       setCandidatePages([]);
       setCandidateQuestions([]);
+      setAirdrops([]);
+      setAirdropViews([]);
+      setActiveAirdrop(null);
       setSelectedPostRecord(null);
       setNotifications([]);
       setFollows([]);
@@ -131,6 +142,8 @@ export default function HomePage() {
     loadCandidatePages();
     loadPosts();
     loadCandidateQuestions();
+    loadAirdrops();
+    loadAirdropViews();
     loadNotifications();
     loadFollows();
   }, [session, supabase]);
@@ -179,6 +192,8 @@ export default function HomePage() {
         await loadCandidatePages();
         await loadPosts();
         await loadCandidateQuestions();
+        await loadAirdrops();
+        await loadAirdropViews();
         if (isAdmin) await loadAdminData();
       }, 250);
     };
@@ -198,6 +213,8 @@ export default function HomePage() {
       .on("postgres_changes", { event: "*", schema: "public", table: "debates" }, refreshEverything)
       .on("postgres_changes", { event: "*", schema: "public", table: "candidate_pages" }, refreshEverything)
       .on("postgres_changes", { event: "*", schema: "public", table: "candidate_questions" }, refreshEverything)
+      .on("postgres_changes", { event: "*", schema: "public", table: "airdrops" }, refreshEverything)
+      .on("postgres_changes", { event: "*", schema: "public", table: "airdrop_views", filter: `user_id=eq.${session.user.id}` }, refreshEverything)
       .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, refreshEverything)
       .subscribe();
 
@@ -280,6 +297,25 @@ export default function HomePage() {
       .limit(300);
 
     if (!error) setCandidateQuestions(data || []);
+  }
+
+  async function loadAirdrops() {
+    const { data, error } = await supabase
+      .from("airdrops")
+      .select("*, author:profiles!airdrops_user_id_fkey(id, name, avatar_url, neighborhood, role, badge_title)")
+      .gt("expires_at", new Date().toISOString())
+      .order("created_at", { ascending: false })
+      .limit(80);
+
+    if (!error) setAirdrops(data || []);
+  }
+
+  async function loadAirdropViews() {
+    const { data, error } = await supabase
+      .from("airdrop_views")
+      .select("*");
+
+    if (!error) setAirdropViews(data || []);
   }
 
   async function loadPosts({ page = 0, append = false } = {}) {
@@ -599,6 +635,10 @@ export default function HomePage() {
       category: "problema",
       street: "",
       neighborhood: "",
+      destination: postDraft.destination || "feed",
+      font_family: postDraft.font_family || airdropFonts[0].value,
+      text_color: postDraft.text_color || "#ffffff",
+      background_color: postDraft.background_color || "#111111",
     });
     setPostImageFile(null);
     setPostPreviewUrl("");
@@ -615,6 +655,11 @@ export default function HomePage() {
       return;
     }
 
+    if (postDraft.destination === "airdrop" && !postImageFile?.size) {
+      setMessage("Escolha uma imagem para publicar no Airdrop.");
+      return;
+    }
+
     const topic = postDraft.topic || activeDebates[0]?.slug || "geral";
     let imageUrl = "";
 
@@ -625,8 +670,10 @@ export default function HomePage() {
     if (postImageFile?.size) {
       setPostStatus("Enviando foto...");
       setPostProgress(38);
-      const path = createStoragePath(session.user.id, postImageFile, "post");
-      const { error: uploadError } = await supabase.storage.from("post-images").upload(path, postImageFile);
+      const targetBucket = postDraft.destination === "airdrop" ? "airdrop-images" : "post-images";
+      const pathPrefix = postDraft.destination === "airdrop" ? "airdrop" : "post";
+      const path = createStoragePath(session.user.id, postImageFile, pathPrefix);
+      const { error: uploadError } = await supabase.storage.from(targetBucket).upload(path, postImageFile);
       if (uploadError) {
         setMessage("Não foi possível enviar a foto. Tente outra imagem.");
         setPosting(false);
@@ -634,7 +681,42 @@ export default function HomePage() {
         setPostProgress(0);
         return;
       }
-      imageUrl = supabase.storage.from("post-images").getPublicUrl(path).data.publicUrl;
+      imageUrl = supabase.storage.from(targetBucket).getPublicUrl(path).data.publicUrl;
+    }
+
+    if (postDraft.destination === "airdrop") {
+      setPostStatus("Salvando Airdrop...");
+      setPostProgress(72);
+
+      const { error } = await supabase.from("airdrops").insert({
+        user_id: session.user.id,
+        caption: body.slice(0, 140),
+        image_url: imageUrl,
+        font_family: postDraft.font_family || airdropFonts[0].value,
+        text_color: postDraft.text_color || "#ffffff",
+        background_color: postDraft.background_color || "#111111",
+        expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+      });
+
+      if (error) {
+        setMessage(error.message);
+        setPosting(false);
+        setPostStatus("");
+        setPostProgress(0);
+        return;
+      }
+
+      setPostStatus("Airdrop publicado.");
+      setPostProgress(100);
+      clearPostComposer();
+      setComposerOpen(false);
+      await loadAirdrops();
+      setTimeout(() => {
+        setPosting(false);
+        setPostStatus("");
+        setPostProgress(0);
+      }, 650);
+      return;
     }
 
     setPostStatus("Salvando no feed...");
@@ -826,6 +908,19 @@ export default function HomePage() {
     setMessage("Mural da candidata personalizado.");
     await loadProfile();
     await loadCandidatePages();
+  }
+
+  async function openAirdrop(airdrop) {
+    setActiveAirdrop(airdrop);
+
+    const alreadyViewed = airdropViews.some((view) => view.airdrop_id === airdrop.id);
+    if (!alreadyViewed) {
+      setAirdropViews((views) => [...views, { airdrop_id: airdrop.id, user_id: session.user.id }]);
+      await supabase.from("airdrop_views").upsert({
+        airdrop_id: airdrop.id,
+        user_id: session.user.id,
+      });
+    }
   }
 
   async function toggleLike(post) {
@@ -1364,6 +1459,8 @@ export default function HomePage() {
         ) : (
           <div className="social-layout">
             <section className="feed-column">
+              <AirdropRail airdropViews={airdropViews} airdrops={airdrops} onOpenAirdrop={openAirdrop} />
+
               <header className="feed-topbar">
                 <div>
                   <p className="eyebrow">Comunidade local</p>
@@ -1395,17 +1492,22 @@ export default function HomePage() {
                       </div>
                     </div>
                     <form onSubmit={createPost}>
+                  <div className="composer-mode">
+                    <button className={postDraft.destination === "feed" ? "active" : ""} disabled={posting} onClick={() => updatePostDraft("destination", "feed")} type="button">Feed</button>
+                    <button className={postDraft.destination === "airdrop" ? "active" : ""} disabled={posting} onClick={() => updatePostDraft("destination", "airdrop")} type="button">Airdrop 24h</button>
+                  </div>
                   <textarea
                     className="composer-textarea"
                     disabled={posting}
-                    maxLength={500}
+                    maxLength={postDraft.destination === "airdrop" ? 140 : 500}
                     name="body"
                     onChange={(event) => updatePostDraft("body", event.target.value)}
-                    placeholder="Compartilhe uma cena, uma ideia ou um problema da cidade."
+                    placeholder={postDraft.destination === "airdrop" ? "Texto curto do Airdrop." : "Compartilhe uma cena, uma ideia ou um problema da cidade."}
                     required
                     value={postDraft.body}
                   />
-                  <div className="form-grid">
+                  {postDraft.destination === "feed" ? (
+                    <div className="form-grid">
                     <select disabled={posting} name="topic" onChange={(event) => updatePostDraft("topic", event.target.value)} required value={postDraft.topic}>
                       {activeDebates.map((topic) => (
                         <option key={topic.slug} value={topic.slug}>{topic.title}</option>
@@ -1418,7 +1520,16 @@ export default function HomePage() {
                     </select>
                     <input disabled={posting} name="street" onChange={(event) => updatePostDraft("street", event.target.value)} placeholder="Rua / avenida" value={postDraft.street} />
                     <input disabled={posting} name="neighborhood" onChange={(event) => updatePostDraft("neighborhood", event.target.value)} placeholder="Bairro" value={postDraft.neighborhood} />
-                  </div>
+                    </div>
+                  ) : (
+                    <div className="airdrop-controls">
+                      <select disabled={posting} onChange={(event) => updatePostDraft("font_family", event.target.value)} value={postDraft.font_family}>
+                        {airdropFonts.map((font) => <option key={font.value} value={font.value}>{font.label}</option>)}
+                      </select>
+                      <label>Texto <input disabled={posting} onChange={(event) => updatePostDraft("text_color", event.target.value)} type="color" value={postDraft.text_color} /></label>
+                      <label>Fundo <input disabled={posting} onChange={(event) => updatePostDraft("background_color", event.target.value)} type="color" value={postDraft.background_color} /></label>
+                    </div>
+                  )}
                   {(postDraft.body || postDraft.street || postDraft.neighborhood || postPreviewUrl) && (
                     <article className="composer-preview">
                       <div className="preview-heading">
@@ -1429,21 +1540,21 @@ export default function HomePage() {
                         <Avatar profile={profile} />
                         <div>
                           <strong>{profile?.name || "Morador"}</strong>
-                          <small>{postDraft.street || "Rua não informada"} {postDraft.neighborhood ? `- ${postDraft.neighborhood}` : ""}</small>
+                          <small>{postDraft.destination === "airdrop" ? "Airdrop por 24 horas" : `${postDraft.street || "Rua não informada"} ${postDraft.neighborhood ? `- ${postDraft.neighborhood}` : ""}`}</small>
                         </div>
-                        <span>{categoryLabel(postDraft.category)} / {topicLabel(postDraft.topic, activeDebates)}</span>
+                        <span>{postDraft.destination === "airdrop" ? "Airdrop" : `${categoryLabel(postDraft.category)} / ${topicLabel(postDraft.topic, activeDebates)}`}</span>
                       </div>
-                      {postDraft.body && <p>{postDraft.body}</p>}
+                      {postDraft.body && <p style={postDraft.destination === "airdrop" ? { backgroundColor: postDraft.background_color, color: postDraft.text_color, fontFamily: postDraft.font_family } : undefined}>{postDraft.body}</p>}
                       {postPreviewUrl && <img alt="Preview da foto escolhida" src={postPreviewUrl} />}
                     </article>
                   )}
                   <div className="composer-footer">
                     <label className="upload-button">
                       <PaperclipIcon />
-                      <span>{postImageFile ? "Trocar foto" : "Anexar foto"}</span>
+                      <span>{postImageFile ? "Trocar foto" : postDraft.destination === "airdrop" ? "Imagem do Airdrop" : "Anexar foto"}</span>
                       <input accept="image/*" disabled={posting} key={postPreviewUrl || "empty-post-image"} name="image" onChange={handlePostImageChange} type="file" />
                     </label>
-                    <button className="primary-button" disabled={posting} type="submit">{posting ? "Postando..." : "Publicar"}</button>
+                    <button className="primary-button" disabled={posting} type="submit">{posting ? "Postando..." : postDraft.destination === "airdrop" ? "Publicar Airdrop" : "Publicar"}</button>
                   </div>
                   {posting && (
                     <div className="post-progress" aria-live="polite">
@@ -1625,6 +1736,7 @@ export default function HomePage() {
           </div>
         )}
       </section>
+      {activeAirdrop && <AirdropViewer airdrop={activeAirdrop} onClose={() => setActiveAirdrop(null)} />}
     </main>
   );
 }
@@ -1769,6 +1881,52 @@ function NotificationsPanel({ notifications, onOpenNotification }) {
           ))}
         </div>
       )}
+    </section>
+  );
+}
+
+function AirdropRail({ airdropViews, airdrops, onOpenAirdrop }) {
+  if (!airdrops.length) return null;
+
+  return (
+    <section className="airdrop-section" aria-label="Airdrops ativos">
+      <div className="section-heading compact-heading">
+        <div>
+          <p className="eyebrow">24 horas</p>
+          <h2>Airdrop</h2>
+        </div>
+      </div>
+      <div className="airdrop-row">
+        {airdrops.map((airdrop) => {
+          const viewed = airdropViews.some((view) => view.airdrop_id === airdrop.id);
+          return (
+            <button className={viewed ? "airdrop-bubble viewed" : "airdrop-bubble"} key={airdrop.id} onClick={() => onOpenAirdrop(airdrop)} type="button">
+              <span className="airdrop-ring" />
+              <Avatar profile={airdrop.author} />
+              <strong>{airdrop.author?.name || "Morador"}</strong>
+            </button>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function AirdropViewer({ airdrop, onClose }) {
+  return (
+    <section className="airdrop-viewer" role="dialog" aria-modal="true">
+      <button className="airdrop-close" onClick={onClose} type="button">Fechar</button>
+      <article className="airdrop-card-full" style={{ backgroundColor: airdrop.background_color || "#111111", color: airdrop.text_color || "#ffffff", fontFamily: airdrop.font_family || airdropFonts[0].value }}>
+        <img alt="Airdrop publicado" src={airdrop.image_url} />
+        <div className="airdrop-author">
+          <Avatar profile={airdrop.author} />
+          <div>
+            <strong>{airdrop.author?.name || "Morador"}</strong>
+            <small>Publicado por 24 horas</small>
+          </div>
+        </div>
+        {airdrop.caption && <p>{airdrop.caption}</p>}
+      </article>
     </section>
   );
 }

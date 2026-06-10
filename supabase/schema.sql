@@ -137,6 +137,25 @@ create table if not exists public.candidate_questions (
   updated_at timestamptz default now()
 );
 
+create table if not exists public.airdrops (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  caption text default '',
+  image_url text not null,
+  font_family text default 'Inter, system-ui, sans-serif',
+  text_color text default '#ffffff',
+  background_color text default '#111111',
+  expires_at timestamptz not null,
+  created_at timestamptz default now()
+);
+
+create table if not exists public.airdrop_views (
+  airdrop_id uuid not null references public.airdrops(id) on delete cascade,
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  viewed_at timestamptz default now(),
+  primary key (airdrop_id, user_id)
+);
+
 drop trigger if exists on_auth_user_created on auth.users;
 drop function if exists public.handle_new_user();
 
@@ -203,6 +222,8 @@ alter table public.reports enable row level security;
 alter table public.debates enable row level security;
 alter table public.candidate_pages enable row level security;
 alter table public.candidate_questions enable row level security;
+alter table public.airdrops enable row level security;
+alter table public.airdrop_views enable row level security;
 
 drop policy if exists "profiles are visible to authenticated users" on public.profiles;
 create policy "profiles are visible to authenticated users"
@@ -439,6 +460,36 @@ on public.candidate_questions for delete
 to authenticated
 using (auth.uid() = user_id or public.is_admin());
 
+drop policy if exists "active airdrops are visible" on public.airdrops;
+create policy "active airdrops are visible"
+on public.airdrops for select
+to authenticated
+using (expires_at > now() or auth.uid() = user_id or public.is_admin());
+
+drop policy if exists "users can create airdrops" on public.airdrops;
+create policy "users can create airdrops"
+on public.airdrops for insert
+to authenticated
+with check (auth.uid() = user_id and expires_at <= now() + interval '24 hours 5 minutes');
+
+drop policy if exists "users can delete their airdrops" on public.airdrops;
+create policy "users can delete their airdrops"
+on public.airdrops for delete
+to authenticated
+using (auth.uid() = user_id or public.is_admin());
+
+drop policy if exists "users can view their airdrop views" on public.airdrop_views;
+create policy "users can view their airdrop views"
+on public.airdrop_views for select
+to authenticated
+using (auth.uid() = user_id);
+
+drop policy if exists "users can register airdrop views" on public.airdrop_views;
+create policy "users can register airdrop views"
+on public.airdrop_views for insert
+to authenticated
+with check (auth.uid() = user_id);
+
 insert into public.debates (slug, title, description, status)
 values
   ('infraestrutura', 'Infraestrutura', 'Ruas, calçadas, iluminação e obras.', 'active'),
@@ -640,6 +691,10 @@ insert into storage.buckets (id, name, public)
 values ('candidate-images', 'candidate-images', true)
 on conflict (id) do nothing;
 
+insert into storage.buckets (id, name, public)
+values ('airdrop-images', 'airdrop-images', true)
+on conflict (id) do nothing;
+
 drop policy if exists "authenticated users can upload avatars" on storage.objects;
 create policy "authenticated users can upload avatars"
 on storage.objects for insert
@@ -675,6 +730,18 @@ create policy "candidate images are public"
 on storage.objects for select
 to public
 using (bucket_id = 'candidate-images');
+
+drop policy if exists "authenticated users can upload airdrop images" on storage.objects;
+create policy "authenticated users can upload airdrop images"
+on storage.objects for insert
+to authenticated
+with check (bucket_id = 'airdrop-images');
+
+drop policy if exists "airdrop images are public" on storage.objects;
+create policy "airdrop images are public"
+on storage.objects for select
+to public
+using (bucket_id = 'airdrop-images');
 
 do $$
 begin
@@ -716,5 +783,13 @@ begin
 
   if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'candidate_pages') then
     alter publication supabase_realtime add table public.candidate_pages;
+  end if;
+
+  if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'airdrops') then
+    alter publication supabase_realtime add table public.airdrops;
+  end if;
+
+  if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'airdrop_views') then
+    alter publication supabase_realtime add table public.airdrop_views;
   end if;
 end $$;
