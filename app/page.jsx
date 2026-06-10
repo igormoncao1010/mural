@@ -63,7 +63,7 @@ export default function HomePage() {
   const [candidateQuestions, setCandidateQuestions] = useState([]);
   const [airdrops, setAirdrops] = useState([]);
   const [airdropViews, setAirdropViews] = useState([]);
-  const [activeAirdrop, setActiveAirdrop] = useState(null);
+  const [activeAirdropGroup, setActiveAirdropGroup] = useState(null);
   const [notifications, setNotifications] = useState([]);
   const [follows, setFollows] = useState([]);
   const [showAlerts, setShowAlerts] = useState(false);
@@ -130,7 +130,7 @@ export default function HomePage() {
       setCandidateQuestions([]);
       setAirdrops([]);
       setAirdropViews([]);
-      setActiveAirdrop(null);
+      setActiveAirdropGroup(null);
       setSelectedPostRecord(null);
       setNotifications([]);
       setFollows([]);
@@ -910,9 +910,7 @@ export default function HomePage() {
     await loadCandidatePages();
   }
 
-  async function openAirdrop(airdrop) {
-    setActiveAirdrop(airdrop);
-
+  async function markAirdropViewed(airdrop) {
     const alreadyViewed = airdropViews.some((view) => view.airdrop_id === airdrop.id);
     if (!alreadyViewed) {
       setAirdropViews((views) => [...views, { airdrop_id: airdrop.id, user_id: session.user.id }]);
@@ -921,6 +919,13 @@ export default function HomePage() {
         user_id: session.user.id,
       });
     }
+  }
+
+  async function openAirdropGroup(items, startIndex = 0) {
+    const orderedItems = [...items].sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+    const selectedIndex = Math.max(0, Math.min(startIndex, orderedItems.length - 1));
+    setActiveAirdropGroup({ items: orderedItems, index: selectedIndex });
+    await markAirdropViewed(orderedItems[selectedIndex]);
   }
 
   async function toggleLike(post) {
@@ -1459,7 +1464,7 @@ export default function HomePage() {
         ) : (
           <div className="social-layout">
             <section className="feed-column">
-              <AirdropRail airdropViews={airdropViews} airdrops={airdrops} onOpenAirdrop={openAirdrop} />
+              <AirdropRail airdropViews={airdropViews} airdrops={airdrops} onOpenAirdropGroup={openAirdropGroup} />
 
               <header className="feed-topbar">
                 <div>
@@ -1736,7 +1741,14 @@ export default function HomePage() {
           </div>
         )}
       </section>
-      {activeAirdrop && <AirdropViewer airdrop={activeAirdrop} onClose={() => setActiveAirdrop(null)} />}
+      {activeAirdropGroup && (
+        <AirdropViewer
+          group={activeAirdropGroup}
+          onClose={() => setActiveAirdropGroup(null)}
+          onView={markAirdropViewed}
+          setGroup={setActiveAirdropGroup}
+        />
+      )}
     </main>
   );
 }
@@ -1885,8 +1897,20 @@ function NotificationsPanel({ notifications, onOpenNotification }) {
   );
 }
 
-function AirdropRail({ airdropViews, airdrops, onOpenAirdrop }) {
+function AirdropRail({ airdropViews, airdrops, onOpenAirdropGroup }) {
   if (!airdrops.length) return null;
+
+  const groups = Array.from(
+    airdrops.reduce((map, airdrop) => {
+      const key = airdrop.user_id;
+      const current = map.get(key) || { author: airdrop.author, items: [] };
+      current.items.push(airdrop);
+      map.set(key, current);
+      return map;
+    }, new Map()).values()
+  )
+    .map((group) => ({ ...group, items: [...group.items].sort((a, b) => new Date(a.created_at) - new Date(b.created_at)) }))
+    .sort((a, b) => new Date(b.items[b.items.length - 1]?.created_at || 0) - new Date(a.items[a.items.length - 1]?.created_at || 0));
 
   return (
     <section className="airdrop-section" aria-label="Airdrops ativos">
@@ -1897,16 +1921,14 @@ function AirdropRail({ airdropViews, airdrops, onOpenAirdrop }) {
         </div>
       </div>
       <div className="airdrop-row">
-        {airdrops.map((airdrop) => {
-          const viewed = airdropViews.some((view) => view.airdrop_id === airdrop.id);
+        {groups.map((group) => {
+          const firstUnseenIndex = group.items.findIndex((airdrop) => !airdropViews.some((view) => view.airdrop_id === airdrop.id));
+          const viewed = firstUnseenIndex === -1;
           return (
-            <button className={viewed ? "airdrop-bubble viewed" : "airdrop-bubble"} key={airdrop.id} onClick={() => onOpenAirdrop(airdrop)} style={{ "--airdrop-image": `url(${airdrop.image_url})` }} type="button">
+            <button className={viewed ? "airdrop-bubble viewed" : "airdrop-bubble"} key={group.author?.id || group.items[0]?.user_id} onClick={() => onOpenAirdropGroup(group.items, viewed ? 0 : firstUnseenIndex)} type="button">
               <span className="airdrop-ring" />
-              <span className="airdrop-mini-author">
-                <Avatar profile={airdrop.author} />
-                <strong>{airdrop.author?.name || "Morador"}</strong>
-              </span>
-              {airdrop.caption && <span className="airdrop-mini-caption">{airdrop.caption}</span>}
+              <Avatar profile={group.author} />
+              <strong>{group.author?.name || "Morador"}</strong>
             </button>
           );
         })}
@@ -1915,11 +1937,30 @@ function AirdropRail({ airdropViews, airdrops, onOpenAirdrop }) {
   );
 }
 
-function AirdropViewer({ airdrop, onClose }) {
+function AirdropViewer({ group, onClose, onView, setGroup }) {
+  const airdrop = group.items[group.index];
+
+  async function goToAirdrop(nextIndex) {
+    if (nextIndex < 0) return;
+    if (nextIndex >= group.items.length) {
+      onClose();
+      return;
+    }
+
+    const nextAirdrop = group.items[nextIndex];
+    setGroup({ ...group, index: nextIndex });
+    await onView(nextAirdrop);
+  }
+
   return (
     <section className="airdrop-viewer" role="dialog" aria-modal="true">
       <button className="airdrop-close" onClick={onClose} type="button">Fechar</button>
       <article className="airdrop-card-full" style={{ backgroundColor: airdrop.background_color || "#111111", color: airdrop.text_color || "#ffffff", fontFamily: airdrop.font_family || airdropFonts[0].value }}>
+        <div className="airdrop-progress">
+          {group.items.map((item, index) => (
+            <span className={index <= group.index ? "active" : ""} key={item.id} />
+          ))}
+        </div>
         <img alt="Airdrop publicado" src={airdrop.image_url} />
         <div className="airdrop-author">
           <Avatar profile={airdrop.author} />
@@ -1929,6 +1970,8 @@ function AirdropViewer({ airdrop, onClose }) {
           </div>
         </div>
         {airdrop.caption && <p>{airdrop.caption}</p>}
+        <button className="airdrop-nav previous" onClick={() => goToAirdrop(group.index - 1)} type="button" aria-label="Airdrop anterior" />
+        <button className="airdrop-nav next" onClick={() => goToAirdrop(group.index + 1)} type="button" aria-label="Próximo Airdrop" />
       </article>
     </section>
   );
