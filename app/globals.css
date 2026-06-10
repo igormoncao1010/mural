@@ -609,7 +609,7 @@ small {
   inset: 0;
   display: grid;
   place-items: center;
-  padding: 20px;
+  padding: max(32px, env(safe-area-inset-top)) 18px max(32px, env(safe-area-inset-bottom));
   background: rgba(0, 0, 0, 0.76);
 }
 
@@ -627,10 +627,12 @@ small {
 }
 
 .airdrop-card-full {
-  width: min(420px, 100%);
+  width: min(420px, 92vw);
+  height: min(760px, calc(100dvh - 72px));
   aspect-ratio: 9 / 16;
   position: relative;
   overflow: hidden;
+  display: block;
   border-radius: 18px;
   box-shadow: 0 28px 90px rgba(0, 0, 0, 0.36);
   animation: airdrop-pop 0.28s ease-out;
@@ -674,42 +676,80 @@ small {
 }
 
 .airdrop-author,
-.airdrop-card-full p {
+.airdrop-caption {
   position: absolute;
   z-index: 1;
 }
 
 .airdrop-author {
-  top: 0;
+  top: 20px;
   left: 0;
   right: 0;
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 24px 18px 18px;
+  gap: 12px;
+  padding: 16px 20px 18px;
 }
 
 .airdrop-author .avatar {
-  width: 34px;
-  height: 34px;
+  width: 38px;
+  height: 38px;
   border: 2px solid rgba(255, 255, 255, 0.88);
 }
 
-.airdrop-author small {
-  display: block;
-  opacity: 0.78;
-  font-weight: 800;
+.airdrop-author > div {
+  min-width: 0;
+  transform: translateY(-1px);
 }
 
-.airdrop-card-full p {
+.airdrop-author strong {
+  display: block;
+  max-width: 250px;
+  overflow: hidden;
+  color: #fff;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 1rem;
+  font-weight: 950;
+  line-height: 1;
+  text-shadow: 0 2px 16px rgba(0, 0, 0, 0.55);
+}
+
+.airdrop-caption {
   left: 0;
   right: 0;
-  bottom: 0;
   margin: 0;
-  padding: 14px 18px 22px;
+  padding: 18px 22px;
   font-size: clamp(1.5rem, 6vw, 2.4rem);
   line-height: 1.05;
   font-weight: 900;
+  overflow-wrap: anywhere;
+  text-shadow: 0 3px 18px rgba(0, 0, 0, 0.45);
+}
+
+.airdrop-caption.pos-top {
+  top: 88px;
+}
+
+.airdrop-caption.pos-center {
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.airdrop-caption.pos-bottom {
+  bottom: 10px;
+}
+
+.airdrop-caption.align-left {
+  text-align: left;
+}
+
+.airdrop-caption.align-center {
+  text-align: center;
+}
+
+.airdrop-caption.align-right {
+  text-align: right;
 }
 
 .airdrop-nav {
@@ -1246,7 +1286,7 @@ small {
 
 .airdrop-controls {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) auto auto;
   gap: 8px;
 }
 
@@ -1273,6 +1313,22 @@ small {
   border: 0;
   padding: 0;
   background: transparent;
+}
+
+.emoji-row {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.emoji-row button {
+  width: 38px;
+  height: 38px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  font-size: 1.05rem;
 }
 
 .form-grid {
@@ -2694,7 +2750,8 @@ th {
   }
 
   .airdrop-card-full {
-    width: min(360px, 100%);
+    width: min(360px, 92vw);
+    height: min(640px, calc(100dvh - 88px));
   }
 
   .feed-topbar {

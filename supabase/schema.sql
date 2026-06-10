@@ -141,13 +141,22 @@ create table if not exists public.airdrops (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references public.profiles(id) on delete cascade,
   caption text default '',
-  image_url text not null,
+  image_url text default '',
+  image_path text default '',
   font_family text default 'Inter, system-ui, sans-serif',
   text_color text default '#ffffff',
   background_color text default '#111111',
+  text_position text default 'bottom',
+  text_align text default 'left',
   expires_at timestamptz not null,
   created_at timestamptz default now()
 );
+
+alter table public.airdrops alter column image_url drop not null;
+alter table public.airdrops alter column image_url set default '';
+alter table public.airdrops add column if not exists image_path text default '';
+alter table public.airdrops add column if not exists text_position text default 'bottom';
+alter table public.airdrops add column if not exists text_align text default 'left';
 
 create table if not exists public.airdrop_views (
   airdrop_id uuid not null references public.airdrops(id) on delete cascade,
@@ -155,6 +164,10 @@ create table if not exists public.airdrop_views (
   viewed_at timestamptz default now(),
   primary key (airdrop_id, user_id)
 );
+
+create index if not exists airdrops_expires_at_idx on public.airdrops (expires_at);
+create index if not exists airdrops_user_created_idx on public.airdrops (user_id, created_at desc);
+create index if not exists airdrop_views_user_idx on public.airdrop_views (user_id);
 
 drop trigger if exists on_auth_user_created on auth.users;
 drop function if exists public.handle_new_user();
@@ -206,6 +219,47 @@ as $$
   set share_count = coalesce(share_count, 0) + 1
   where id = post_id_input;
 $$;
+
+create or replace function public.cleanup_expired_airdrops()
+returns integer
+language plpgsql
+security definer
+set search_path = public, storage
+as $$
+declare
+  deleted_count integer := 0;
+begin
+  with expired as (
+    select
+      id,
+      coalesce(
+        nullif(image_path, ''),
+        nullif(split_part(image_url, '/storage/v1/object/public/airdrop-images/', 2), '')
+      ) as object_name
+    from public.airdrops
+    where expires_at <= now()
+  ),
+  deleted_files as (
+    delete from storage.objects o
+    using expired
+    where o.bucket_id = 'airdrop-images'
+      and expired.object_name is not null
+      and o.name = expired.object_name
+    returning o.id
+  ),
+  deleted_airdrops as (
+    delete from public.airdrops a
+    using expired
+    where a.id = expired.id
+    returning a.id
+  )
+  select count(*) into deleted_count from deleted_airdrops;
+
+  return deleted_count;
+end;
+$$;
+
+grant execute on function public.cleanup_expired_airdrops() to authenticated;
 
 drop trigger if exists protect_profile_role on public.profiles;
 create trigger protect_profile_role

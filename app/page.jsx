@@ -81,7 +81,7 @@ export default function HomePage() {
   const [selectedPostId, setSelectedPostId] = useState("");
   const [selectedPostRecord, setSelectedPostRecord] = useState(null);
   const [currentCandidateSlug, setCurrentCandidateSlug] = useState("ana-martins");
-  const [postDraft, setPostDraft] = useState({ body: "", topic: "", category: "problema", street: "", neighborhood: "", destination: "feed", font_family: airdropFonts[0].value, text_color: "#ffffff", background_color: "#111111" });
+  const [postDraft, setPostDraft] = useState({ body: "", topic: "", category: "problema", street: "", neighborhood: "", destination: "feed", font_family: airdropFonts[0].value, text_color: "#ffffff", background_color: "#111111", text_position: "bottom", text_align: "left" });
   const [postImageFile, setPostImageFile] = useState(null);
   const [postPreviewUrl, setPostPreviewUrl] = useState("");
   const [posting, setPosting] = useState(false);
@@ -140,6 +140,7 @@ export default function HomePage() {
     loadProfile();
     loadDebates();
     loadCandidatePages();
+    cleanupExpiredAirdrops();
     loadPosts();
     loadCandidateQuestions();
     loadAirdrops();
@@ -182,6 +183,12 @@ export default function HomePage() {
   }, [posting]);
 
   useEffect(() => {
+    if (!message) return undefined;
+    const timer = setTimeout(() => setMessage(""), 5000);
+    return () => clearTimeout(timer);
+  }, [message]);
+
+  useEffect(() => {
     if (!session?.user || !supabase) return;
 
     let refreshTimer;
@@ -190,7 +197,7 @@ export default function HomePage() {
       refreshTimer = setTimeout(async () => {
         await loadDebates();
         await loadCandidatePages();
-        await loadPosts();
+        await loadPosts({ pageSize: Math.max((feedPage + 1) * FEED_PAGE_SIZE, FEED_PAGE_SIZE) });
         await loadCandidateQuestions();
         await loadAirdrops();
         await loadAirdropViews();
@@ -222,7 +229,22 @@ export default function HomePage() {
       clearTimeout(refreshTimer);
       supabase.removeChannel(channel);
     };
-  }, [session?.user?.id, supabase, isAdmin]);
+  }, [session?.user?.id, supabase, isAdmin, feedPage]);
+
+  async function cleanupExpiredAirdrops() {
+    if (!supabase || typeof window === "undefined") return;
+
+    const cleanupKey = "nodus-airdrop-cleanup-at";
+    const lastCleanup = Number(window.localStorage.getItem(cleanupKey) || 0);
+    const sixHours = 6 * 60 * 60 * 1000;
+
+    if (Date.now() - lastCleanup < sixHours) return;
+
+    const { error } = await supabase.rpc("cleanup_expired_airdrops");
+    if (!error) {
+      window.localStorage.setItem(cleanupKey, String(Date.now()));
+    }
+  }
 
   async function loadProfile() {
     const { data, error } = await supabase
@@ -318,11 +340,11 @@ export default function HomePage() {
     if (!error) setAirdropViews(data || []);
   }
 
-  async function loadPosts({ page = 0, append = false } = {}) {
+  async function loadPosts({ page = 0, append = false, pageSize = FEED_PAGE_SIZE } = {}) {
     if (append) setLoadingMorePosts(true);
 
-    const from = page * FEED_PAGE_SIZE;
-    const to = from + FEED_PAGE_SIZE - 1;
+    const from = append ? page * FEED_PAGE_SIZE : 0;
+    const to = append ? from + FEED_PAGE_SIZE - 1 : pageSize - 1;
     const { data, error } = await supabase
       .from("posts")
       .select("*, author:profiles!posts_user_id_fkey(id, name, avatar_url, neighborhood, bio, role, badge_title), comments(*, commenter:profiles!comments_user_id_fkey(id, name, avatar_url, neighborhood, bio, role, badge_title)), likes(user_id)")
@@ -336,8 +358,9 @@ export default function HomePage() {
     }
 
     const nextPosts = data || [];
-    setFeedPage(page);
-    setHasMorePosts(nextPosts.length === FEED_PAGE_SIZE);
+    const loadedPages = append ? page : Math.max(0, Math.ceil(nextPosts.length / FEED_PAGE_SIZE) - 1);
+    setFeedPage(loadedPages);
+    setHasMorePosts(append ? nextPosts.length === FEED_PAGE_SIZE : nextPosts.length === pageSize);
     setPosts((currentPosts) => {
       if (!append) return nextPosts;
 
@@ -350,6 +373,10 @@ export default function HomePage() {
   async function loadMorePosts() {
     if (loadingMorePosts || !hasMorePosts) return;
     await loadPosts({ page: feedPage + 1, append: true });
+  }
+
+  async function refreshLoadedPosts() {
+    await loadPosts({ pageSize: Math.max((feedPage + 1) * FEED_PAGE_SIZE, FEED_PAGE_SIZE) });
   }
 
   async function loadNotifications() {
@@ -639,6 +666,8 @@ export default function HomePage() {
       font_family: postDraft.font_family || airdropFonts[0].value,
       text_color: postDraft.text_color || "#ffffff",
       background_color: postDraft.background_color || "#111111",
+      text_position: postDraft.text_position || "bottom",
+      text_align: postDraft.text_align || "left",
     });
     setPostImageFile(null);
     setPostPreviewUrl("");
@@ -655,13 +684,9 @@ export default function HomePage() {
       return;
     }
 
-    if (postDraft.destination === "airdrop" && !postImageFile?.size) {
-      setMessage("Escolha uma imagem para publicar no Airdrop.");
-      return;
-    }
-
     const topic = postDraft.topic || activeDebates[0]?.slug || "geral";
     let imageUrl = "";
+    let imagePath = "";
 
     setPosting(true);
     setPostStatus("Preparando publicação...");
@@ -681,6 +706,7 @@ export default function HomePage() {
         setPostProgress(0);
         return;
       }
+      imagePath = path;
       imageUrl = supabase.storage.from(targetBucket).getPublicUrl(path).data.publicUrl;
     }
 
@@ -692,9 +718,12 @@ export default function HomePage() {
         user_id: session.user.id,
         caption: body.slice(0, 140),
         image_url: imageUrl,
+        image_path: imagePath,
         font_family: postDraft.font_family || airdropFonts[0].value,
         text_color: postDraft.text_color || "#ffffff",
         background_color: postDraft.background_color || "#111111",
+        text_position: postDraft.text_position || "bottom",
+        text_align: postDraft.text_align || "left",
         expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
       });
 
@@ -743,7 +772,7 @@ export default function HomePage() {
 
     setPostStatus("Atualizando feed...");
     setPostProgress(92);
-    await loadPosts();
+    await refreshLoadedPosts();
     setPostProgress(100);
     setPostStatus("Publicado.");
     clearPostComposer();
@@ -944,7 +973,7 @@ export default function HomePage() {
       setMessage("Curtido.");
     }
 
-    await loadPosts();
+    await refreshLoadedPosts();
   }
 
   async function sharePost(post) {
@@ -963,7 +992,7 @@ export default function HomePage() {
 
       await supabase.rpc("increment_post_share", { post_id_input: post.id });
       setMessage("Compartilhamento registrado.");
-      await loadPosts();
+      await refreshLoadedPosts();
     } catch {
       setMessage("Não foi possível compartilhar agora.");
     }
@@ -994,7 +1023,7 @@ export default function HomePage() {
     await createNotification({ recipientId: post?.user_id, type: "comment", postId, commentId: data?.id });
     setActiveCommentPostId(postId);
     setMessage("Comentário enviado.");
-    await loadPosts();
+    await refreshLoadedPosts();
   }
 
   async function reportContent({ postId, commentId }) {
@@ -1029,7 +1058,7 @@ export default function HomePage() {
     }
 
     setMessage("Publicação excluída.");
-    await loadPosts();
+    await refreshLoadedPosts();
     if (isAdmin) await loadAdminData();
   }
 
@@ -1045,7 +1074,7 @@ export default function HomePage() {
     }
 
     setMessage("Comentário excluído.");
-    await loadPosts();
+    await refreshLoadedPosts();
     if (isAdmin) await loadAdminData();
   }
 
@@ -1061,7 +1090,7 @@ export default function HomePage() {
     }
 
     setMessage("Perfil excluído da plataforma.");
-    await loadPosts();
+    await refreshLoadedPosts();
     await loadAdminData();
   }
 
@@ -1109,7 +1138,7 @@ export default function HomePage() {
 
     await createNotification({ recipientId: post.user_id, type: adminResponse ? "admin_response" : "status", postId: post.id });
     setMessage("Status e resposta oficial atualizados.");
-    await loadPosts();
+    await refreshLoadedPosts();
   }
 
   async function updateUserBadge(event, person) {
@@ -1132,7 +1161,7 @@ export default function HomePage() {
 
     setMessage("Insígnia atualizada.");
     await loadAdminData();
-    await loadPosts();
+    await refreshLoadedPosts();
   }
 
   async function signOut() {
@@ -1274,7 +1303,6 @@ export default function HomePage() {
           <span>N</span>
           <div>
             <strong>Nodus</strong>
-            <small>Rede local participativa</small>
           </div>
         </div>
 
@@ -1468,7 +1496,6 @@ export default function HomePage() {
 
               <header className="feed-topbar">
                 <div>
-                  <p className="eyebrow">Comunidade local</p>
                   <h1 className="feed-title">Feed</h1>
                 </div>
                 <button className="compose-toggle" onClick={() => setComposerOpen((open) => !open)} type="button">
@@ -1499,7 +1526,7 @@ export default function HomePage() {
                     <form onSubmit={createPost}>
                   <div className="composer-mode">
                     <button className={postDraft.destination === "feed" ? "active" : ""} disabled={posting} onClick={() => updatePostDraft("destination", "feed")} type="button">Feed</button>
-                    <button className={postDraft.destination === "airdrop" ? "active" : ""} disabled={posting} onClick={() => updatePostDraft("destination", "airdrop")} type="button">Airdrop 24h</button>
+                    <button className={postDraft.destination === "airdrop" ? "active" : ""} disabled={posting} onClick={() => updatePostDraft("destination", "airdrop")} type="button">Airdrop</button>
                   </div>
                   <textarea
                     className="composer-textarea"
@@ -1531,8 +1558,23 @@ export default function HomePage() {
                       <select disabled={posting} onChange={(event) => updatePostDraft("font_family", event.target.value)} value={postDraft.font_family}>
                         {airdropFonts.map((font) => <option key={font.value} value={font.value}>{font.label}</option>)}
                       </select>
+                      <select disabled={posting} onChange={(event) => updatePostDraft("text_position", event.target.value)} value={postDraft.text_position}>
+                        <option value="top">Texto no topo</option>
+                        <option value="center">Texto no centro</option>
+                        <option value="bottom">Texto na base</option>
+                      </select>
+                      <select disabled={posting} onChange={(event) => updatePostDraft("text_align", event.target.value)} value={postDraft.text_align}>
+                        <option value="left">Esquerda</option>
+                        <option value="center">Centro</option>
+                        <option value="right">Direita</option>
+                      </select>
                       <label>Texto <input disabled={posting} onChange={(event) => updatePostDraft("text_color", event.target.value)} type="color" value={postDraft.text_color} /></label>
                       <label>Fundo <input disabled={posting} onChange={(event) => updatePostDraft("background_color", event.target.value)} type="color" value={postDraft.background_color} /></label>
+                      <div className="emoji-row" aria-label="Emojis rápidos">
+                        {["🔥", "❤️", "👏", "✨", "📍"].map((emoji) => (
+                          <button disabled={posting} key={emoji} onClick={() => updatePostDraft("body", `${postDraft.body}${emoji}`)} type="button">{emoji}</button>
+                        ))}
+                      </div>
                     </div>
                   )}
                   {(postDraft.body || postDraft.street || postDraft.neighborhood || postPreviewUrl) && (
@@ -1545,18 +1587,18 @@ export default function HomePage() {
                         <Avatar profile={profile} />
                         <div>
                           <strong>{profile?.name || "Morador"}</strong>
-                          <small>{postDraft.destination === "airdrop" ? "Airdrop por 24 horas" : `${postDraft.street || "Rua não informada"} ${postDraft.neighborhood ? `- ${postDraft.neighborhood}` : ""}`}</small>
+                          <small>{postDraft.destination === "airdrop" ? "Airdrop" : `${postDraft.street || "Rua não informada"} ${postDraft.neighborhood ? `- ${postDraft.neighborhood}` : ""}`}</small>
                         </div>
                         <span>{postDraft.destination === "airdrop" ? "Airdrop" : `${categoryLabel(postDraft.category)} / ${topicLabel(postDraft.topic, activeDebates)}`}</span>
                       </div>
-                      {postDraft.body && <p style={postDraft.destination === "airdrop" ? { backgroundColor: postDraft.background_color, color: postDraft.text_color, fontFamily: postDraft.font_family } : undefined}>{postDraft.body}</p>}
+                      {postDraft.body && <p style={postDraft.destination === "airdrop" ? { backgroundColor: postDraft.background_color, color: postDraft.text_color, fontFamily: postDraft.font_family, textAlign: postDraft.text_align } : undefined}>{postDraft.body}</p>}
                       {postPreviewUrl && <img alt="Preview da foto escolhida" src={postPreviewUrl} />}
                     </article>
                   )}
                   <div className="composer-footer">
                     <label className="upload-button">
                       <PaperclipIcon />
-                      <span>{postImageFile ? "Trocar foto" : postDraft.destination === "airdrop" ? "Imagem do Airdrop" : "Anexar foto"}</span>
+                      <span>{postImageFile ? "Trocar foto" : postDraft.destination === "airdrop" ? "Imagem opcional" : "Anexar foto"}</span>
                       <input accept="image/*" disabled={posting} key={postPreviewUrl || "empty-post-image"} name="image" onChange={handlePostImageChange} type="file" />
                     </label>
                     <button className="primary-button" disabled={posting} type="submit">{posting ? "Postando..." : postDraft.destination === "airdrop" ? "Publicar Airdrop" : "Publicar"}</button>
@@ -1916,7 +1958,6 @@ function AirdropRail({ airdropViews, airdrops, onOpenAirdropGroup }) {
     <section className="airdrop-section" aria-label="Airdrops ativos">
       <div className="section-heading compact-heading">
         <div>
-          <p className="eyebrow">24 horas</p>
           <h2>Airdrop</h2>
         </div>
       </div>
@@ -1961,15 +2002,18 @@ function AirdropViewer({ group, onClose, onView, setGroup }) {
             <span className={index <= group.index ? "active" : ""} key={item.id} />
           ))}
         </div>
-        <img alt="Airdrop publicado" src={airdrop.image_url} />
+        {airdrop.image_url && <img alt="Airdrop publicado" src={airdrop.image_url} />}
         <div className="airdrop-author">
           <Avatar profile={airdrop.author} />
           <div>
             <strong>{airdrop.author?.name || "Morador"}</strong>
-            <small>Publicado por 24 horas</small>
           </div>
         </div>
-        {airdrop.caption && <p>{airdrop.caption}</p>}
+        {airdrop.caption && (
+          <p className={`airdrop-caption pos-${airdrop.text_position || "bottom"} align-${airdrop.text_align || "left"}`}>
+            {airdrop.caption}
+          </p>
+        )}
         <button className="airdrop-nav previous" onClick={() => goToAirdrop(group.index - 1)} type="button" aria-label="Airdrop anterior" />
         <button className="airdrop-nav next" onClick={() => goToAirdrop(group.index + 1)} type="button" aria-label="Próximo Airdrop" />
       </article>
