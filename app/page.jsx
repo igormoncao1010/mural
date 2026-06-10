@@ -1900,10 +1900,13 @@ function AirdropRail({ airdropViews, airdrops, onOpenAirdrop }) {
         {airdrops.map((airdrop) => {
           const viewed = airdropViews.some((view) => view.airdrop_id === airdrop.id);
           return (
-            <button className={viewed ? "airdrop-bubble viewed" : "airdrop-bubble"} key={airdrop.id} onClick={() => onOpenAirdrop(airdrop)} type="button">
+            <button className={viewed ? "airdrop-bubble viewed" : "airdrop-bubble"} key={airdrop.id} onClick={() => onOpenAirdrop(airdrop)} style={{ "--airdrop-image": `url(${airdrop.image_url})` }} type="button">
               <span className="airdrop-ring" />
-              <Avatar profile={airdrop.author} />
-              <strong>{airdrop.author?.name || "Morador"}</strong>
+              <span className="airdrop-mini-author">
+                <Avatar profile={airdrop.author} />
+                <strong>{airdrop.author?.name || "Morador"}</strong>
+              </span>
+              {airdrop.caption && <span className="airdrop-mini-caption">{airdrop.caption}</span>}
             </button>
           );
         })}

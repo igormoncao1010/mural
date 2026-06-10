@@ -540,48 +540,94 @@ small {
 .airdrop-row {
   display: grid;
   grid-auto-flow: column;
-  grid-auto-columns: 76px;
-  gap: 12px;
+  grid-auto-columns: 112px;
+  gap: 10px;
   overflow-x: auto;
   overscroll-behavior-x: contain;
   padding: 2px 2px 8px;
 }
 
 .airdrop-bubble {
-  min-width: 0;
   position: relative;
-  display: grid;
-  justify-items: center;
-  gap: 7px;
+  height: 178px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
   border: 0;
-  background: transparent;
-  color: var(--ink);
+  border-radius: 14px;
+  padding: 9px;
+  color: #fff;
+  background-color: #151515;
   font: inherit;
+  text-align: left;
   cursor: pointer;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
+  isolation: isolate;
 }
 
-.airdrop-bubble .avatar {
-  width: 56px;
-  height: 56px;
-  border: 3px solid var(--surface);
+.airdrop-bubble::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background:
+    linear-gradient(180deg, rgba(0, 0, 0, 0.42) 0%, transparent 42%, rgba(0, 0, 0, 0.72) 100%),
+    var(--airdrop-image);
+  background-position: center;
+  background-size: cover;
 }
 
-.airdrop-bubble strong {
-  max-width: 70px;
+.airdrop-mini-author {
+  position: relative;
+  z-index: 2;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.airdrop-mini-author .avatar {
+  width: 24px;
+  height: 24px;
+  flex: 0 0 auto;
+  border: 2px solid rgba(255, 255, 255, 0.9);
+}
+
+.airdrop-mini-author strong,
+.airdrop-mini-caption {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  text-shadow: 0 1px 12px rgba(0, 0, 0, 0.55);
+}
+
+.airdrop-mini-author strong {
   font-size: 0.72rem;
+  font-weight: 950;
+}
+
+.airdrop-mini-caption {
+  position: relative;
+  z-index: 2;
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 950;
+  line-height: 1.15;
 }
 
 .airdrop-ring {
   position: absolute;
-  top: -3px;
-  width: 64px;
-  height: 64px;
-  border-radius: 50%;
+  inset: 0;
+  border-radius: inherit;
   background: conic-gradient(#ff2e55, #ffcc33, #ff2e55);
   animation: airdrop-spin 4s linear infinite;
+  z-index: 3;
+  pointer-events: none;
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  padding: 3px;
 }
 
 .airdrop-bubble.viewed .airdrop-ring {
@@ -617,8 +663,6 @@ small {
   aspect-ratio: 9 / 16;
   position: relative;
   overflow: hidden;
-  display: grid;
-  align-content: end;
   border-radius: 18px;
   box-shadow: 0 28px 90px rgba(0, 0, 0, 0.36);
   animation: airdrop-pop 0.28s ease-out;
@@ -641,15 +685,24 @@ small {
 
 .airdrop-author,
 .airdrop-card-full p {
-  position: relative;
+  position: absolute;
   z-index: 1;
 }
 
 .airdrop-author {
+  top: 0;
+  left: 0;
+  right: 0;
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 18px 18px 0;
+  padding: 18px;
+}
+
+.airdrop-author .avatar {
+  width: 34px;
+  height: 34px;
+  border: 2px solid rgba(255, 255, 255, 0.88);
 }
 
 .airdrop-author small {
@@ -659,6 +712,9 @@ small {
 }
 
 .airdrop-card-full p {
+  left: 0;
+  right: 0;
+  bottom: 0;
   margin: 0;
   padding: 14px 18px 22px;
   font-size: clamp(1.5rem, 6vw, 2.4rem);
